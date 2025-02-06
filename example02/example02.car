@@ -1,0 +1,2335 @@
++PATCH,MYCDE.
++KEEP,PAWC.
+*
+      INTEGER NWPAW
+      PARAMETER (NWPAW=1000000)
+      REAL PAW
+      COMMON / PAWC / PAW(NWPAW)
+*
++PATCH,MYUSER.
++DECK,USER00. **********************************************************    
+      SUBROUTINE USER00                                                     
+************************************************************************    
+*                                                                      *    
+*     Name           :  USER00                                         *    
+*     Called by      :  PHINIT                                         *    
+*     Date of coding :  Oct 23, 1993                                   *    
+*     Last update    :  Mar 07, 1995                                   *    
+*     Task           :  User initialization                            *    
+*                                                                      *    
+************************************************************************    
+      IMPLICIT NONE                                                         
++CDE, PHCDE.                                                                
++CDE, PSCFLG.                                                               
++CDE, PSCRNQ.                                                               
+*
+*--   local variables                                                       
+*           
+      CALL PHSET('FPE',0)
+*--   Skelana initialization                                                
+      CALL PSINI                                                            
+*
+*--   Change the default values                                             
+*--   of control flags and keys                                             
+*
+      IFLTRA = 1         !Track information
+      IFLSIM = 1         !Simulation                                          
+      IFLBSP = 2         !Beam spot                                            
+      IFLBTG = 2         !B-tagging
+      IFLEMC = 1         !Elm. calorimetry
+      IFLHAC = 1         !Had. calorimetry                                     
+      IFLELE = 1         !Electron identification                              
+      IFLPHO = 1         !Photon/pi0 identification
+      IFLMUO = 1         !Muon identification
+      IFLHAD = 1         !Hadron identification
+      IFLVDH = 1         !Vertex detector
+      IFLRV0 = 1         !V0 reconstruction
+      IFLPHO = 1         !photon/pi0 identification
+      IFLPHC = 1         !Converted photon
+      IFLSTR = 0         !Track selection (LVLOCK filling)
+      IFLJET = 1         !jet reconstruction
+*                                                                           
+*--   Change the default acceptance conditions for                          
+*--   detectors/triggers of the "RUNQUALITY" files                          
+*                                                                           
+*--   MVX_A and MVX_C                                                       
+      IRQDMN(1) = 1                                                         
+      IRQDMN(2) = 1                                                         
+*                                                                           
+*--   TPC_0 and TPC_1                                                       
+      IRQDMN(5) = 7                                                         
+      IRQDMN(6) = 7                                                         
+*                                                                           
+*--   Read the runquality files                                             
+      CALL PSRUNQ(0)                                                       
+*                                                                           
+*--   Put your initialization code here...
+*
+      CALL MYINI
+*                                                                           
+      END                                                                  
+*                                                                           
++DECK,USER01. **********************************************************
+      SUBROUTINE USER01(NEED)
+************************************************************************
+*                                                                      *
+*     Name           :  USER01                                         *
+*     Called by      :  PHNEED                                         *
+*     Date of coding :  Jan 18, 1992                                   *
+*     Last update    :  Mar 15, 1994                                   *
+*     Task           :  General event analysis                         *
+*                                                                      *
+*     Output         :  NEED = 1 the event is     needed               *
+*                       NEED = 0 the event is NOT needed               *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
++CDE, PHCDE.
++CDE, PSCEVT.
++CDE, PSCFLG.
+*
+*--   arguments
+      INTEGER NEED
+*
+*--   functions
+      INTEGER IPHPIC,JBIT
+      CHARACTER*4 PHRTY
+*
+*--   local variables
+      INTEGER IDENT,IRSEL
+      CHARACTER*4 RECTYP
+*
+      NEED   = 0
+*
+*--   Check the record type
+      RECTYP = PHRTY()
+*
+      IF     ( RECTYP .EQ. 'SOR ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'COR ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'EOR ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'SOS ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'BOF ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'CPT ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. '0072' ) THEN
+         GO TO 99
+      ENDIF
+*
+      IF ( RECTYP .NE. 'DST '  .AND.
+     +     RECTYP .NE. 'MINI' ) THEN
+         WRITE(*,1000) IIIRUN,IIIEVT,NEVENT
+         GO TO 99
+      ENDIF
+*
+*--   Maximum  number of events
+C      IF ( NEVENT .GT. 100 ) THEN
+C        NEED = -3
+C        GO TO 99
+C      ENDIF
+*
+      IF ( RECTYP .EQ. 'DST ' ) THEN
+*
+*--      Pilot record information
+         IDENT = IPHPIC ('IDEN',1)
+         IF ( IDENT .GE. 0 ) THEN
+*--         Hadronic selection
+            IHAD4 = 0
+            IF(JBIT(IPILOT(IDENT+6),1) .EQ. 1  .AND.
+     +         JBIT(IPILOT(IDENT+6),2) .EQ. 1) IHAD4 = 1
+         ENDIF
+*
+*--      Run quality selection
+         IRSEL = 1
+         IF ( IFLRNQ .GT. 0  .AND.
+     +        IIIRUN .GT. 0 ) THEN
+            CALL PSRUNS(IRSEL)
+         ENDIF
+*
+CCC      IF ( IRSEL .EQ. 1  .AND.
+CCC  +        IHAD4 .NE. 0 ) NEED = 1
+         NEED = 1
+*
+C        IF ( IRSEL .EQ. 1 ) NEED = 1
+      ENDIF
+*
+      IF ( RECTYP .EQ. 'MINI' ) THEN
+*
+         NEED = 1
+*
+      ENDIF
+*
+   99 CONTINUE
+*-----------------------------------------------------------------------
+ 1000 FORMAT(/,1X,'%PSMAIN-E-USER01, ','Event not in any DST format'
+     +      ,/,1X,'                  ','Run',I7,', Event',I6,'/',I6,/)
+      END
+*
++DECK,USER02. **********************************************************    
+      SUBROUTINE USER02                                                    
+************************************************************************     
+*                                                                      *     
+*     Name           :  USER02                                         *     
+*     Called by      :  PHPROC                                         *     
+*     Date of coding :  Nov 18, 1993                                   *     
+*     Last update    :  Mar 07, 1995                                   *     
+*     Task           :  To access the event for analysis               *     
+*                                                                      *     
+************************************************************************     
+      IMPLICIT NONE                                                          
+*
++CDE, PHCDE.                                                                 
++CDE, PSCVEC.                                                                
++CDE, PSCTBL.                                                                
++CDE, PSCEVT.
+*
+*--   local varibles
+      REAL TIME
+*                                                                            
+*--   At the beggining of the event                                          
+      CALL PSBEG                                                             
+*                                                                            
+*--   Produce event list(s) (example Team11)                                 
+C     CALL PSEVTL                                                            
+*                                                                            
+*--   Put your analysis code here...                                         
+*
+      CALL MYANA
+*
+* Compute the CPU time
+*
+      CALL TIMED(TIME)
+      CALL HFILL(1,TIME,0.,1.)
+      IF (MOD(FLOAT(NGOODS),10000.).EQ.0. .AND. NGOODS.NE.0) THEN
+	CALL TIMEX(TIME)
+	WRITE (6,1001)NEVENT,NGOODS,NFZFIL,TIME
+      ENDIF
+*-----------------------------------------------------------------------
+ 1001   FORMAT(/,1X,'%PSMAIN-I-USER02, Program execution statistics',
+     +    /,1X,'Events Processed',I8,', Selected',I8,
+     +    /,1X,'Cassettes processed',I4,', CPU time used',F9.2,/)
+      END                                                                    
+*                                                                            
++DECK, USER99. *********************************************************
+      SUBROUTINE USER99
+************************************************************************
+*                                                                      *
+*     Name           :  USER99                                         *
+*     Called by      :  PHEND                                          *
+*     Date of coding :  Aug 07, 1993                                   *
+*     Last update    :  Mar 25, 1994                                   *
+*     Task           :  To be called at the end of the run             *
+*                                                                      *
+************************************************************************
++CDE, PSCEVL.
+*
+      CLOSE(LUNMU1)
+      CLOSE(LUNEL1)
+      CLOSE(LUNLP2)
+*
+      CALL HCDIR('//PAWC',' ')
+      CALL HCDIR('//MYHIST',' ')
+*
+      CALL HROUT(0,ICYCLE,' ')
+      CALL HREND('MYHIST')
+*
+      CLOSE(28)
+      CLOSE(29)
+*
+      END
+*
++PATCH,MYANA. ==========================================================
++DECK, MYINI. **********************************************************
+      SUBROUTINE MYINI
+************************************************************************
+*                                                                      *
+*     Name           :  MYINI                                          *
+*     Called by      :  USER00                                         *
+*     Date of coding :  Jan 14, 1995, by A. Lopez-Aguera               *
+*     Last update    :  Nov 07, 1995, by F. Cossutti                   *
+*     Task           :  User analysis initialization                   *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
++CDE, PAWC.
+*
+*--   local variables
+      INTEGER LUNPAW,LRECL,ISTAT
+*-----------------------------------------------------------------------
+*
+*--   HBOOK  initialization
+      CALL HLIMIT( -NWPAW )
+*
+      LUNPAW = 1
+      LRECL  = 1024
+*
+      CALL HROPEN(LUNPAW,'MYHIST','myhist.hbook','N',LRECL,ISTAT)
+*
+*--   Statistics
+*
+      CALL HBOOK1(1,'TIME FOR EVENT (SEC.)',100,0.,0.1,0.)
+      CALL HBOOK1(10,'Number of processed event',2,-1.,1.,0.)
+*
+*--   General information (for technical checks and comparison
+*     short-mini)
+*
+      CALL HBOOK1(21,'Centre of mass energy',100,90.,95.,0.)
+      CALL HBOOK1(22,'Total charged energy',100,0.1,100.1,0.)
+      CALL HBOOK1(23,'Total electrom. neutral energy',100,0.1,50.1,0.)
+      CALL HBOOK1(24,'Total hadronic neutral energy',100,0.1,50.1,0.)
+      CALL HBOOK1(25,'|P|',100,0.1,50.1,0.)
+      CALL HBOOK1(26,'Perigee par. 1',100,-2.5,2.5,0.)
+      CALL HBOOK1(27,'Perigee par. 2',100,-25.,25.,0.)
+      CALL HBOOK1(28,'Perigee par. 3',180,0.,180.,0.)
+      CALL HBOOK1(29,'Perigee par. 4',360,0.,360.,0.)
+      CALL HBOOK1(30,'Perigee par. 5',100,-0.25,0.25,0.)
+      CALL HBOOK1(31,'Error eps-eps',100,0.,2.,0.)
+      CALL HBOOK1(32,'Error z-z',100,0.,20.,0.)
+      CALL HBOOK1(33,'Error theta-theta',100,0.,10.,0.)
+      CALL HBOOK1(34,'Error phi-phi',100,0.,10.,0.)
+      CALL HBOOK1(35,'Error 1/R-1/R',100,0.,0.2,0.)
+      CALL HBOOK1(36,'Detector in the track',100,0.,100.,0.)
+      CALL HBOOK1(37,'eps Impact parameter with sign',100,-2.,2.,0.)
+      CALL HBOOK1(38,'z Impact parameter with sign',100,-25.,25.,0.)
+*
+*--   LEPTONICS
+*     =========
+*
+*--   Dimuon events 
+*
+      CALL HBOOK1(2001,'P(track)',50,0.,100.,0.)
+      CALL HBOOK1(2501,'Charge/P(track)',100,-0.1,0.1,0.)
+      CALL HBOOK1(2801,'Charge/P(track)',100,-0.1,0.1,0.)
+      CALL HBOOK1(2002,'Theta(track)',90,0.,180.,0.)
+      CALL HBOOK1(2503,'Theta(track)(no TPC )',90,0.,180.,0.)
+      CALL HBOOK1(2003,'Phi(track in the barrel)',90,0.,360.,0.)
+      CALL HBOOK1(2303,'Phi(track in the forward)',90,0.,360.,0.)
+      CALL HBOOK1(2004,'Em  Energy (assoc. to track)',60,0.,3.,0.)
+      CALL HBOOK1(2005,'Had Energy (assoc. to track)',30,0.,30.,0.)
+      CALL HBOOK1(2006,'# Hits Mu-Ch (assoc. to track)',10,0.,10.,0.)
+      CALL HBOOK1(2304,'Em  Energy (assoc. to track)',60,0.,3.,0.)
+      CALL HBOOK1(2305,'Had Energy (assoc. to track)',30,0.,30.,0.)
+      CALL HBOOK1(2306,'# Hits Mu-Ch (assoc. to track)',10,0.,10.,0.)
+      CALL HBOOK2(2007,'P(track 2) vs P(track 1)',50,0.,100.,50,0.,100.,
+     &  0.)
+      CALL HBOOK2(2008,'Eem(track 2) vs Eem(track 1)',60,0.,60.,60,0.,
+     &  60.,0.)
+      CALL HBOOK2(2009,'P(track) vs Theta(track)',90,0.,180.,100,0.,
+     &  100.,0.)
+      CALL HBOOK2(2010,'P(track) vs Phi(track)',90,0.,360.,100,0.,100.,
+     &  0.)
+      CALL HBOOK2(2310,'P(track) vs Phi(track)',90,0.,360.,100,0.,100.,
+     &  0.)
+      CALL HBOOK2(2011,'Theta(track) vs Phi(track)',90,0.,360.,180,0.,
+     &  180.,0.)
+      CALL HBOOK2(2012,'EEm (track) vs Theta(track)',90,0.,180.,60,0.,
+     &  60.,0.)
+      CALL HBOOK2(2013,'EHad (track) vs Theta(track)',90,0.,180.,100,0.,
+     &  15.,0.)
+      CALL HBOOK2(2014,'EEm (track) vs Phi(track)',90,0.,360.,60,0.,60.,
+     &  0.)
+      CALL HBOOK2(2015,'EHad (track) vs Phi(track)',90,0.,360.,100,0.,
+     &  15.,0.)
+      CALL HBOOK2(2016,'Y(vertex) vs X(vertex)',50,-2.5,2.5,50,-2.5,2.5,
+     &  0.)
+      CALL HBOOK1(2017,'Z(vertex)',100,-5.,5.,0.)
+*
+      CALL HBOOK2(2100,'E/P vs Theta (shower in HPC)',47,43.,137.,100,
+     &  0.,2.5,0.)
+      CALL HBOOK2(2101,'E/P vs Phi (shower in HPC)',90,0.,360.,100,0.,
+     &  2.5,0.)
+*
+      CALL HBOOK1(2104,'1 / P(track)  (Barrel)',75,0.015,0.030,0.)
+      CALL HBOOK1(2106,'1 / P(track)  (Forward)',75,0.015,0.030,0.)
+      CALL HBOOK1(2200,'1 / P(track)  (VD+ID+TPC+OD)',75,0.015,0.045,
+     &  0.)
+
+      CALL HBOOK2(2502,' ',90,0.,180.,100,-0.1,0.1,0.)
+      CALL HBOOK1(2201,'1 / P(track)  (VD+ID+TPC)',75,0.01,0.07,0.)
+      CALL HBOOK1(2202,'1 / P(track)  (ID+TPC+OD)',75,0.01,0.07,0.)
+      CALL HBOOK1(2203,'1 / P(track)  (VD+ID+OD)',75,0.01,0.07,0.)
+      CALL HBOOK1(2204,'1 / P(track)  (VD+TPC+OD )',75,0.01,0.07,0.)
+      CALL HBOOK1(2205,'1 / P(track)  (at least 2 out)',75,0.01,0.07,0.)
+*
+      CALL HBOOK1(2700,'1 / P(track)  (ID+TPC+FCA+FCB)',75,0.015,0.045,
+     &  0.)
+      CALL HBOOK1(2701,'1 / P(track)  (TPC+FCA+FCB)',75,0.01,0.07,0.)
+      CALL HBOOK1(2702,'1 / P(track)  (ID+FCA+FCB)',75,0.01,0.07,0.)
+      CALL HBOOK1(2703,'1 / P(track)  (ID+TPC+FCB)',75,0.01,0.07,0.)
+      CALL HBOOK1(2704,'1 / P(track)  (ID+TPC+FCA )',75,0.01,0.07,0.)
+      CALL HBOOK1(2705,'1 / P(track)  (at least 2 out)',75,0.01,0.07,0.)
+*
+*--   HADRONICS
+*     =========
+*
+*--   Standard common statistics
+*
+      CALL HBOOK1(3001,'# Charged tracks',100,0.,100.,0.)
+      CALL HBOOK1(3002,'# Neutral particles',100,0.,100.,0.)
+      CALL HBOOK1(3003,'# TEAM4 tracks',100,0.,100.,0.)
+      CALL HBOOK1(3004,'# VECP length',100,0.,100.,0.)
+      CALL HBOOK1(3005,'# TRAC tracks',100,0.,100.,0.)
+      CALL HBOOK1(3006,'# V0',40,0.,40.,0.)
+      CALL HBOOK1(3007,'# Converted photons',40,0.,40.,0.)
+      CALL HBOOK1(3008,'# HPC showers',40,0.,40.,0.)
+      CALL HBOOK1(3009,'# EMF showers',40,0.,40.,0.)
+      CALL HBOOK1(3010,'# HAC showers',40,0.,40.,0.)
+      CALL HBOOK1(3011,'# Muon identification',40,0.,40.,0.)
+      CALL HBOOK1(3012,'# Electron id. ELOU',40,0.,40.,0.)
+      CALL HBOOK1(3013,'# HADIDENT',100,0.,100.,0.)
+      CALL HBOOK1(3014,'# DEDX',100,0.,100.,0.)
+      CALL HBOOK1(3015,'# GAS Rich',100,0.,100.,0.)
+      CALL HBOOK1(3016,'# LIQUID Rich',100,0.,100.,0.)
+      CALL HBOOK1(3017,'# Electron id. ELID',40,0.,40.,0.)
+      CALL HBOOK1(3018,'# Refitted electrons',40,0.,40.,0.)
+      CALL HBOOK1(3019,'# HPC photon id.',40,0.,40.,0.)
+      CALL HBOOK1(3020,'# HPC pi0 id.',40,0.,40.,0.)
+      CALL HBOOK1(3021,'# Vertex',20,0.,20.,0.)
+*
+*--   Calorimetric showers (HPC,EMF,HAC)
+*
+      CALL HBOOK2(5001,'Etot-Emax vs number of showers HPC',20,0.5,
+     +  10.5,50,0.1,45.1,0.)
+      CALL HBOOK2(5002,'Etot-Emax vs number of showers EMF',20,0.5,
+     +  10.5,50,0.1,45.1,0.)
+      CALL HBOOK2(5003,'Etot-Emax vs number of showers HAC',20,0.5,
+     +  10.5,50,0.1,45.1,0.)
+      CALL HBOOK2(5004,'Total charged energy vs phi',180,0.,360.,
+     +  120,0.1,120.1,0.)
+      CALL HBOOK2(5005,'Total charged energy vs theta',180,0.,180.,
+     +  120.,0.1,120.1,0.)
+      CALL HBOOK2(5006,'Total em neutral energy vs phi',180,0.,360.,
+     +  120,0.1,120.1,0.)
+      CALL HBOOK2(5007,'Total em neutral energy vs theta',180,0.,180.,
+     +  120,0.1,120.1,0.)
+      CALL HBOOK2(5008,'Total neutral energy vs phi',180,0.,360.,
+     +  120,0.1,120.1,0.)
+      CALL HBOOK2(5009,'Total neutral energy vs theta',180,0.,180.,
+     +  120,0.1,120.1,0.)
+*
+      CALL HBPROF(5011,'Energy vs phi HPC charged',180,0.,360.,
+     +  0.1,120.1,' ')
+      CALL HBPROF(5012,'Energy vs theta HPC charged',180,0.,180.,
+     +  0.1,120.1,' ')
+      CALL HBOOK2(5013,'theta vs phi HPC charged',180,0.,360.,
+     +  180,0.,180.,0.)
+      CALL HBOOK2(5014,'Energy vs p HPC charged +',50,0.,50.,
+     +  120,0.1,120.1,0.)
+      CALL HBOOK2(5015,'Energy vs p HPC charged -',50,0.,50.,
+     +  120,0.1,120.1,0.)
+      CALL HBPROF(5016,'Energy vs phi HPC neutral',180,0.,360.,
+     +  0.1,120.1,' ')
+      CALL HBPROF(5017,'Energy vs theta HPC neutral',180,0.,180.,
+     +  0.1,120.1,' ')
+      CALL HBOOK2(5018,'theta vs phi HPC neutral',180,0.,360.,
+     +  180,0.,180.,0.)
+      CALL HBOOK2(5019,'Energy vs p HPC neutral',50,0.,50.,
+     +  120,0.1,120.1,0.)
+*
+      CALL HBPROF(5021,'Energy vs phi EMF charged',180,0.,360.,
+     +  0.1,120.1,' ')
+      CALL HBPROF(5022,'Energy vs theta EMF charged',180,0.,180.,
+     +  0.1,120.1,' ')
+      CALL HBOOK2(5023,'theta vs phi EMF charged',180,0.,360.,
+     +  180,0.,180.,0.)
+      CALL HBOOK2(5024,'Energy vs p EMF charged +',50,0.,50.,
+     +  120,0.1,120.1,0.)
+      CALL HBOOK2(5025,'Energy vs p EMF charged -',50,0.,50.,
+     +  120,0.1,120.1,0.)
+      CALL HBPROF(5026,'Energy vs phi EMF neutral',180,0.,360.,
+     +  0.1,120.1,' ')
+      CALL HBPROF(5027,'Energy vs theta EMF neutral',180,0.,180.,
+     +  0.1,120.1,' ')
+      CALL HBOOK2(5028,'theta vs phi EMF neutral',180,0.,360.,
+     +  180,0.,180.,0.)
+      CALL HBOOK2(5029,'Energy vs p EMF neutral',50,0.,50.,
+     +  120,0.1,120.1,0.)
+*
+      CALL HBPROF(5031,'Energy vs phi HAC charged',180,0.,360.,
+     +  0.1,120.1,' ')
+      CALL HBPROF(5032,'Energy vs theta HAC charged',180,0.,180.,
+     +  0.1,120.1,' ')
+      CALL HBOOK2(5033,'theta vs phi HAC charged',180,0.,360.,
+     +  180,0.,180.,0.)
+      CALL HBOOK2(5034,'Energy vs p HAC charged +',50,0.,50.,
+     +  120,0.1,120.1,0.)
+      CALL HBOOK2(5035,'Energy vs p HAC charged -',50,0.,50.,
+     +  120,0.1,120.1,0.)
+      CALL HBPROF(5036,'Energy vs phi HAC neutral',180,0.,360.,
+     +  0.1,120.1,' ')
+      CALL HBPROF(5037,'Energy vs theta HAC neutral',180,0.,180.,
+     +  0.1,120.1,' ')
+      CALL HBOOK2(5038,'theta vs phi HAC neutral',180,0.,360.,
+     +  180,0.,180.,0.)
+      CALL HBOOK2(5039,'Energy vs p HAC neutral',50,0.,50.,
+     +  120,0.1,120.1,0.)
+*
+*--   Electron identification
+*
+      CALL HBOOK1(6001,'Electron identification flag',6,0.,6.,0.)
+      CALL HBOOK1(6002,'Gamma conversion veto flag',4,0.,4.,0.)         
+      CALL HBOOK2(6003,'E/p vs p',100,0.1,50.1,40,0.,4.,0.)               
+      CALL HBOOK1(6004,'Z (extr) - Z (HPC)',100,-10.,10.,0.)            
+      CALL HBOOK1(6005,'Phi (extr) - Phi (HPC) dir',100,-0.1,0.1,0.)    
+      CALL HBOOK1(6006,'Phi (extr) - Phi (HPC) pos',100,-0.1,0.1,0.)    
+      CALL HBPROF(6007,'dEdx vs p',100,0.1,50.1,0.,10.,' ')               
+      CALL HBOOK1(6008,'Prob chi**2',100,0.,1.,0.)                      
+      CALL HBOOK1(6009,'Track refit mom + rad',100,0.1,50.1,0.)           
+      CALL HBOOK2(6010,'Electron energy vs p',100,0.1,50.1,100,
+     +  0.1,50.1,0.) 
+      CALL HBOOK2(6013,'E/p vs p',100,0.1,50.1,40,0.,4.,0.)               
+      CALL HBOOK1(6014,'Z (extr) - Z (HPC)',100,-10.,10.,0.)            
+      CALL HBOOK1(6015,'Phi (extr) - Phi (HPC) dir',100,-0.1,0.1,0.)    
+      CALL HBOOK1(6016,'Phi (extr) - Phi (HPC) pos',100,-0.1,0.1,0.)    
+      CALL HBPROF(6017,'dEdx vs p',100,0.1,50.1,0.,10.,' ')               
+      CALL HBOOK1(6018,'Prob chi**2',100,0.,1.,0.)                      
+      CALL HBOOK1(6019,'Track refit mom + rad',100,0.1,50.1,0.)           
+      CALL HBOOK2(6020,'Electron energy vs p',100,0.1,50.1,100,
+     +  0.1,50.1,0.) 
+*
+*--   Muon identification
+*
+      CALL HBOOK1(7001,'Muon multiplicity VL',10,0.,10.,0.)
+      CALL HBOOK1(7002,'Muon multiplicity L',10,0.,10.,0.)
+      CALL HBOOK1(7003,'Muon multiplicity S',10,0.,10.,0.)
+      CALL HBOOK1(7004,'Muon multiplicity T',10,0.,10.,0.)
+      CALL HBOOK1(7005,'Muon multiplicity HCAL',10,0.,10.,0.)
+      CALL HBOOK1(7010,'Muon |p| S. cut',100,0.1,50.1,0.)
+      CALL HBOOK1(7011,'Muon cos(theta) S. cut',100,-1.,1.,0.)
+      CALL HBOOK1(7012,'Muon phi S. cut',60,0.,360.,0.)
+      CALL HBOOK1(7013,'S. Muon MUB zeta',100,-600.,600.,0.)
+      CALL HBOOK1(7014,'S. Muon MUB R',100,0.,600.,0.)
+      CALL HBOOK1(7015,'S. Muon MUF zeta',100,-600.,600.,0.)
+      CALL HBOOK1(7016,'S. Muon MUF x',100,-600.,600.,0.)
+      CALL HBOOK1(7017,'S. Muon MUF y',100,-600.,600.,0.)
+      CALL HBOOK1(7020,'MUON |P| T. CUT',100,0.1,50.1,0.)
+      CALL HBOOK1(7021,'MUON COS(THETA) T. CUT',100,-1.,1.,0.)
+      CALL HBOOK1(7022,'MUON PHI T. CUT',60,0.,360.,0.)
+      CALL HBOOK1(7023,'T. Muon MUB zeta',100,-600.,600.,0.)
+      CALL HBOOK1(7024,'T. Muon MUB R',100,0.,600.,0.)
+      CALL HBOOK1(7025,'T. Muon MUF zeta',100,-600.,600.,0.)
+      CALL HBOOK1(7026,'T. Muon MUF x',100,-600.,600.,0.)
+      CALL HBOOK1(7027,'T. Muon MUF y',100,-600.,600.,0.)
+*
+*--   V0 reconstruction
+*
+      CALL HBOOK1(8001,'Lambda Invariant mass',100,1.08,1.18,0.)
+      CALL HBOOK1(8002,'K0 Invariant mass',100,0.4,0.6,0.)
+      CALL HBOOK1(8003,'P Lambda',80,0.1,40.1,0.)
+      CALL HBOOK1(8004,'P Anti Lambda',80,0.1,40.1,0.)
+      CALL HBOOK1(8005,'P K0',80,0.1,40.1,0.)
+      CALL HBOOK1(8006,'Ctau Lambda',100,0.,30.,0.)
+      CALL HBOOK1(8007,'Ctau K0',100,0.,30.,0.)
+      CALL HBOOK2(8008,'Armenteros K0',100,-1.,1.,90,0.,.30,0.)
+      CALL HBOOK2(8009,'Armenteros Lambdas',100,-1.,1.,90,0.,.30,0.)
+      CALL HBOOK1(8010,'FLAG',50,0.,50.,0.)
+      CALL HBOOK1(8011,'Lambda R[f]',100,0.,200.,0.)
+      CALL HBOOK1(8012,'K0 R[f]',100,0.,200.,0.)
+      CALL HBOOK1(8013,'Lambda P([v]^2!)',100,0.,1.,0.)
+      CALL HBOOK1(8014,'K0 P([v]^2!)',100,0.,1.,0.)
+      CALL HBPROF(8015,'Lambda R[f] vs [q]',180,0.,180.,0.,200.,' ')
+      CALL HBPROF(8016,'K0 R[f] vs [q]',180,0.,180.,0.,200.,' ')
+      CALL HBPROF(8017,'Lambda R[f] vs [f]',360,0.,360.,0.,200.,
+     &  ' ')
+      CALL HBPROF(8018,'K0 R[f] vs [f]',360,0.,360.,0.,200.,' ')
+      CALL HBPROF(8019,'Lambda P([v]^2!) vs [q]',180,0.,180.,0.,1.,' ')
+      CALL HBPROF(8020,'K0 P([v]^2!) vs [q]',180,0.,180.,0.,1.,' ')
+      CALL HBPROF(8021,'Lambda P([v]^2!) vs [f]',360,0.,360.,0.,1.,' ')
+      CALL HBPROF(8022,'K0 P([v]^2!) vs [f]',360,0.,360.,0.,1.,' ')
+*
+*--   checks on Lambda invariant mass when proton identified with RICH.
+*
+      CALL HBOOK1(8031,'[L] invariant mass proton id. loose',100,
+     +  1.08,1.18,0.)
+      CALL HBOOK1(8032,'[L] invariant mass proton id. standard',100,
+     +  1.08,1.18,0.)
+*
+*--   PXPHOT converted photons identification
+*
+      CALL HBPROF(9021,'Mean photon energy vs [q]',180,0.,180.,0.,50.,
+     &  ' ')
+      CALL HBPROF(9022,'Mean photon energy vs [f]',180,0.,360.,0.,50.,
+     &  ' ')
+      CALL HBOOK2(9023,'Conv. photon XY radius vs Z',300,-150.,150.,100,
+     &  0.,100.,0.)
+      CALL HBOOK1(9024,'Converted photon PXPHOT code',100,-30.,-20.,0.)
+      CALL HBOOK1(9025,'Conv. photon [f] ',180,0.,360.,0.)
+      CALL HBPROF(9026,'Conv. photon t.l. vs [q]',180,0.,180.,
+     &  0.,100.,' ')
+*
+* VD-ID pattern recognition
+*
+      CALL HBOOK1(10001,'# VD-ID / Hadronic event',5,0.,5.,0.)
+      CALL HBOOK1(10002,'Momentum distribution of VD-ID',100,0.1,
+     &  50.1,0.)
+      CALL HBOOK1(10003,'Theta VD-ID (degrees)',180,0.,180.,0.)
+      CALL HBOOK1(10004,'Error on theta (degrees)',100,0.,1.,0.)
+      CALL HBOOK1(10005,'MOD(Phi,60) VD-ID inside TPC 70cm (degrees)',
+     &  60,0.,60.,0.)
+*
+*--   RICH (hadronic events)
+*
+      CALL HBOOK1(11001,'RICH: Gas Number of photoelectrons BRICH'
+     &  ,20,0.,20.,0.)
+      CALL HBOOK1(11002,'RICH: Gas Cherenkov angle BRICH',100,0.,0.1
+     &  ,0.)
+      CALL HBOOK1(11003,'RICH: Gas pion hypothesis pull BRICH',100,
+     &  -5.,5.,0.)
+      CALL HBOOK1(11004,'RICH: Gas Number of photoelectrons FRICH'
+     &  ,20,0.,20.,0.)
+      CALL HBOOK1(11005,'RICH: Gas Cherenkov angle FRICH',100,0.,0.1
+     &  ,0.)
+      CALL HBOOK1(11006,'RICH: Gas pion hypothesis pull FRICH',100,
+     &  -5.,5.,0.)
+      CALL HBOOK1(11007
+     &  ,'RICH: Liquid Number of photoelectrons BRICH',40,0.,40.,0.)
+      CALL HBOOK1(11008,'RICH: Liquid Cherenkov angle BRICH',100,0.4
+     &  ,0.8,0.)
+      CALL HBOOK1(11009,'RICH: Liquid pion hypothesis pull BRICH'
+     &  ,100,-5.,5.,0.)
+      CALL HBOOK1(11010
+     &  ,'RICH: Liquid Number of photoelectrons FRICH',40,0.,40.,0.)
+      CALL HBOOK1(11011,'RICH: Liquid Cherenkov angle FRICH',100,0.4
+     &  ,0.8,0.)
+      CALL HBOOK1(11012,'RICH: Liquid pion hypothesis pull FRICH'
+     &  ,100,-5.,5.,0.)
+      CALL HBOOK1(11013,'RICH: Gas Cherenkov resolution BRICH',100,0.,0
+     &  .05,0.)
+      CALL HBOOK1(11014,'RICH: Liquid Cherenkov resolution BRICH',100,0.
+     &  ,0.05,0.)
+      CALL HBOOK1(11016,'RICH: Gas Cherenkov resolution FRICH',100,0.,0
+     &  .05,0.)
+      CALL HBOOK1(11017,'RICH: Liquid Cherenkov resolution FRICH',100,0.
+     &  ,0.05,0.)
+*
+      CALL HBOOK1(11021
+     &  ,'RICH: Number of tracks with a ring in Gas BRICH',100,0.
+     &  ,100.,0.)
+      CALL HBOOK1(11022
+     &  ,'RICH: Number of tracks with a ring in Gas FRICH',100,0.
+     &  ,100.,0.)
+      CALL HBOOK1(11023
+     &  ,'RICH: Number of tracks with a ring in Liquid BRICH',100,0.
+     &  ,100.,0.)
+      CALL HBOOK1(11024
+     &  ,'RICH: Number of tracks with a ring in Liquid FRICH',100,0.
+     &  ,100.,0.)
+*
+      CALL HBOOK1(11031,'RICH: NEWTAG loose pions vs p',40,0.,40.,0.)
+      CALL HBOOK1(11032,'RICH: NEWTAG loose kaons vs p',40,0.,40.,0.)
+      CALL HBOOK1(11033,'RICH: NEWTAG loose protons vs p',40,0.,40.,0.
+     &  )
+*
+*--   DEDX in hadronic events
+*
+      CALL HBOOK1(11101,'dEdx in barrel',100,0.,2.,0.)
+      CALL HBOOK1(11102,'dEdx in forward',100,0.,2.,0.)
+      CALL HBOOK1(11103,'number of wires',200,0.,200.,0.)
+      CALL HBOOK1(11104,'pool (pion hypothesis) CALDEDX',100,-5.,5.,0.)
+      CALL HBOOK1(11105,'pool (pion hypothesis) BBDEDX',100,-5.,5.,0.)
+      CALL HBPROF(11106,'dEdx vs p',100,0.1,50.1,1.,10.,' ')
+      CALL HBPROF(11107,'dEdx vs cos(theta)',100,-1.,1.,1.,10.,' ')
+*
+*--   B-tagging on event basis
+*
+      CALL HBOOK1(12001,'Beam spot sigma x',100,-0.02,0.02,0.)
+      CALL HBOOK1(12002,'Beam spot sigma y',100,-0.002,0.002,0.)
+      CALL HBOOK1(12003,'Beam spot sigma z',100,-0.1,0.1,0.)
+      CALL HBOOK1(12004,'Primary vertex sigma x',100,-0.02,0.02,0.)
+      CALL HBOOK1(12005,'Primary vertex sigma y',100,-0.002,0.002,0.)
+      CALL HBOOK1(12006,'Primary vertex sigma z',300,-1.5,1.5,0.)
+      CALL HBOOK1(12007,'xB.S.-xP.V.',100,-0.1,0.1,0.)
+      CALL HBOOK1(12008,'yB.S.-yP.V.',100,-0.01,0.01,0.)
+      CALL HBOOK1(12009,'zB.S.-zP.V.',100,-0.1,0.1,0.)
+      CALL HBOOK1(12011,'Positive H1 PROB',100,0.,1.,0.)
+      CALL HBOOK1(12012,'Positive H2 PROB',100,0.,1.,0.)
+      CALL HBOOK1(12013,'Positive event PROB',100,0.,1.,0.)
+      CALL HBOOK1(12014,'Negative H1 PROB',100,0.,1.,0.)
+      CALL HBOOK1(12015,'Negative H2 PROB',100,0.,1.,0.)
+      CALL HBOOK1(12016,'Negative event PROB',100,0.,1.,0.)
+      CALL HBOOK1(12017,'All H1 PROB',100,0.,1.,0.)
+      CALL HBOOK1(12018,'All H2 PROB',100,0.,1.,0.)
+      CALL HBOOK1(12019,'All event PROB',100,0.,1.,0.)
+      CALL HBOOK1(12020,'Thrust',100,0.,1.,0.)
+      CALL HBOOK1(12021,'Thrust axis module',100,0.9,1.1,0.)
+      CALL HBOOK1(12022,'Thrust axis theta',180,0.,180.,0.)
+      CALL HBOOK1(12023,'Thrust axis phi',180,0.,360.,0.)
+*
+*--   Identified Pi0 and Gamma in HPC
+*
+      CALL HBOOK1(15001,'Pi0 fitted mass',100,0.001,0.501,0.)
+      CALL HBOOK1(15002,'Pi0 rotation angle',180,-180.,180.,0.)
+      CALL HBOOK2(15003,'Pi0 momentum vs theta',180,0.,180.,
+     +  100,0.1,50.1,0.)
+      CALL HBOOK2(15004,'Pi0 theta vs phi',180,0.,360.,180,0.,180.,0.)
+      CALL HBOOK2(15011,'Gamma energy vs theta',180,0.,180.,
+     +  100,0.1,50.1,0.)
+      CALL HBOOK2(15012,'Gamma theta vs phi',180,0.,360.,
+     +  180,0.,180.,0.)
+      CALL HBOOK1(15013,'Gamma number of clusters',100,0.,100.,0.)
+      CALL HBOOK1(15021,'PXPHOT code all neutrals',103,-102.,0.,0.)
+*
+      CALL HBPRO(0,0.)
+      CALL HIDOPT(0,'STAT')
+*
+      OPEN(28, FILE="dimuon.csv")
+      WRITE(28,'(1x,A,22(",",A))')
+     +  "NRUN",
+     +  "IEVT",
+     +  "ECM",
+     +  "E1",
+     +  "P1",
+     +  "PT1",
+     +  "PX1",
+     +  "PY1",
+     +  "PZ1",
+     +  "Q1",
+     +  "PHI1",
+     +  "THETA1",
+     +  "E2",
+     +  "P2",
+     +  "PT2",
+     +  "PX2",
+     +  "PY2",
+     +  "PZ2",
+     +  "Q2",
+     +  "PHI2",
+     +  "THETA2",
+     +  "MISSPT",
+     +  "MISSPHI"
+      OPEN(29, FILE="hadron.csv")
+      WRITE(29,'(1X,A,28(",",A))')
+     +  "NRUN",
+     +  "IEVT",
+     +  "ECM",
+     +  "NJETS",
+     +  "E1",
+     +  "P1",
+     +  "PT1",
+     +  "PX1",
+     +  "PY1",
+     +  "PZ1",
+     +  "PHI1",
+     +  "THETA1",
+     +  "E2",
+     +  "P2",
+     +  "PT2",
+     +  "PX2",
+     +  "PY2",
+     +  "PZ2",
+     +  "PHI2",
+     +  "THETA2",
+     +  "E3",
+     +  "P3",
+     +  "PT3",
+     +  "PX3",
+     +  "PY3",
+     +  "PZ3",
+     +  "PHI3",
+     +  "THETA3",
+     +  "BTAG"
+*
+      END
+*
++DECK,MYANA. ***********************************************************
+      SUBROUTINE MYANA
+************************************************************************
+*                                                                      *
+*     Name           :  MYINI                                          *
+*     Called by      :  USER02                                         *
+*     Date of coding :  Jan 14, 1995, by A. Lopez-Aguera               *
+*     Last update    :  Nov 09, 1995, by F. Cossutti                   *
+*     Task           :  User analysis steering routine                 *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE, PHCDE.
++CDE, PSCEVT.
+*
+      CHARACTER*4 RECTYP,PHRTY
+*-----------------------------------------------------------------------
+*
+*--   Check the DST type (short,mini)
+*
+      RECTYP = PHRTY()
+*
+*--   Separate between hadronic and non-hadronic events:
+*
+*--   NON-HADRONIC events : Dimuon
+*
+      IF(IHAD4.EQ.0) THEN
+        CALL HFILL(10,-0.5,0.,1.)
+*
+	IF (RECTYP.EQ.'DST ') THEN
+*
+*--   Dimuons events
+          CALL MYDIMU
+*
+	ENDIF
+*
+      ELSE
+*
+*--   HADRONIC events
+*
+        CALL HFILL(10,0.5,0.,1.)
+*
+*--   Statistics
+        CALL MYSTAT
+*
+*--   General event track information
+        CALL MYEVEN
+*
+*--   Shower information
+        IF ( RECTYP.EQ.'DST ') CALL MYSHOW
+*
+*--   Electron id in qqbar
+        CALL MYELID
+*
+*--   Muon id in qqbar
+        CALL MYMUID
+*
+*--   Secondary vertex
+        CALL MYV0ID
+*
+*--   PXPHOT converted photons identification
+        CALL MYPHOT
+*
+*--   Hadron id with the RICH 
+        CALL MYRICH
+*
+*--   Hadron id with the dEdx
+	CALL MYDEDX
+*
+*--   B tagging
+        CALL MYBTAG
+*
+*--   Pi0 and photons identified in HPC
+        IF (RECTYP.EQ.'DST ') CALL MYPI0
+*
+        CALL MYCSV
+*
+      ENDIF
+*
+      END
+*
++DECK,MYDIMU. **********************************************************
+      SUBROUTINE MYDIMU
+************************************************************************
+*                                                                      *
+*     Name           :  MYDIMU                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  Dec 04, 1994 by A. Lopez-Aguera                *
+*     Last update    :  May 03, 1995 by F. Cossutti                    *
+*     Task           :  To select dimuon events as Team 2              *
+*                       (see DELPHI 94-10 PROG 205)                    *
+*                       and fill-up the histograms                     *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PHCDE.
++CDE,PXCONS.
++CDE,PSCEVT.
++CDE,PSCVEC.
++CDE,PSCVTX.
++CDE,PSCTRA.
++CDE,PSCHPC.
++CDE,PSCEMF.
++CDE,PSCHAC.
++CDE,PSCMUD.
++CDE,PSCDEX.
+*
+*--   functions
+      INTEGER LVMAX,JBIT,JBYT
+      REAL VMAX
+      LOGICAL BBDEDX
+*
+*--   local variables
+      INTEGER III,JJJ,KKK,LLL,INDEX(4),ICOUN,IMAX
+      INTEGER IRIV,IOFF
+      INTEGER NHIT1,NHIT2,NBIT,ITOT
+      INTEGER IDIM,NORD,IFAIL
+      PARAMETER (IDIM=5,NORD=5)
+      INTEGER NVDXY,NVDZ,IR(NORD)
+*
+      REAL PPP(MTRACK)
+      REAL ACOL,THETA(4),PHI(4),EEM(4),EHC(4),AAA,BBB
+      REAL THERI,POOL,EXDEDX,DSURP,R(5)
+      REAL PMISS(2),SMISS(2),SIG1(2),SIG2(2),CURV,PCURV
+      REAL ERROR(IDIM,IDIM)
+*
+      LOGICAL RIB,RIF,GOODG,GOODL,PGAS,PLIQ
+      LOGICAL NWIR1,P2
+      LOGICAL TPC(2),ID(2),VDXY(2),VDZ(2),OD(2)
+*
+      REAL PTMX, PTMY
+*-----------------------------------------------------------------------
+*
+      IF (NCVECP.LT.2) RETURN
+*
+*--   Select dimuon events as Team2 (from DELPHI 94-10 PROG 205)
+*     and fill the ntuple.
+*
+      IMAX = 4
+*
+      CALL VFILL(PPP,MTRACK,-999.)
+      DO 5 III = 1,4
+    5   INDEX(III) = 0
+*
+      DO 10 III = 1,NVECP
+        PPP(III) = VECP(6,III)        
+   10 CONTINUE
+*
+*--   most energetic charged particle index
+      INDEX(1) = LVMAX(PPP,NCVECP)
+      PPP(INDEX(1)) = -999.
+*--   2nd most energetic charged particle index
+      INDEX(2) = LVMAX(PPP,NCVECP)
+      PPP(INDEX(2)) = -999.
+*--   3rd most energetic charged particle index
+      IF (NCVECP.GE.3) THEN
+        INDEX(3) = LVMAX(PPP,NCVECP)
+        CALL VFILL(PPP,NCVECP,-999.)
+      ENDIF
+*--   most energetic neutral particle index
+      IF (NNVECP.GT.0) THEN      
+	INDEX(4) = LVMAX(PPP,NVECP)
+      ENDIF
+*
+      CALL VZERO(THETA,4)
+      CALL VZERO(PHI,4)
+      CALL VZERO(EEM,4)
+      CALL VZERO(EHC,4)
+      DO III=1,IMAX
+*
+	IF (INDEX(III).LE.MTRACK .AND. INDEX(III).GT.0) THEN
+*
+          CALL PXANGL(VECP(1,INDEX(III)),VECP(2,INDEX(III)),
+     +      VECP(3,INDEX(III)),THETA(III),PHI(III))
+          THETA(III) = THETA(III)*180./PI
+          PHI(III) = PHI(III)*180./PI
+	  EEM(III) = QHPC(8,INDEX(III))+QEMF(8,INDEX(III))
+          EHC(III) = QHAC(8,INDEX(III))
+*
+	ENDIF
+*
+      ENDDO
+*
+      ACOL = ABS(THETA(1)-THETA(2))
+*
+*--   Team 2 selection criteria
+* 
+      IF (VECP(6,INDEX(1)).LE.15. .OR. VECP(6,INDEX(2)).LE.15.) 
+     +  GO TO 999
+      IF (THETA(1).LE.11. .OR. THETA(1).GT.169.) GO TO 999
+      IF (THETA(2).LE.11. .OR. THETA(2).GT.169.) GO TO 999
+      IF (ABS(QTRAC(38,INDEX(1))).GE.0.2 .OR. 
+     +  ABS(QTRAC(38,INDEX(2))).GT.0.2) GO TO 999
+      IF (ABS(QTRAC(39,INDEX(1))).GE.4.5 .OR. 
+     +  ABS(QTRAC(39,INDEX(2))).GT.4.5) GO TO 999
+      IF (INDEX(3).NE.0) THEN
+        IF (VECP(6,INDEX(3)).GT.5. .AND. VECP(6,INDEX(1)).LT.40.) 
+     +    GO TO 999
+      ENDIF
+      IF (ACOL.GT.10.) GO TO 999
+    
+      PTMX = 0. - VECP(1,INDEX(1)) - VECP(1,INDEX(2))
+      PTMY = 0. - VECP(2,INDEX(1)) - VECP(2,INDEX(2))
+      WRITE(28,'(1X,I9,",",I9,22(",",F10.3))') 
+     + IIIRUN,
+     + IIIEVT,
+     + ECMAS,
+     + VECP(4,INDEX(1)),
+     + VECP(6,INDEX(1)),
+     + SQRT(VECP(1,INDEX(1))**2 + VECP(2,INDEX(1))**2),
+     + VECP(1,INDEX(1)),
+     + VECP(2,INDEX(1)),
+     + VECP(3,INDEX(1)),
+     + VECP(7,INDEX(1)),
+     + ATAN2(VECP(2,INDEX(1)),VECP(1,INDEX(1))),
+     + ACOS(VECP(3,INDEX(1))/VECP(6,INDEX(1))),
+     + VECP(4,INDEX(2)),
+     + VECP(6,INDEX(2)),
+     + SQRT(VECP(1,INDEX(2))**2 + VECP(1,INDEX(2))**2),
+     + VECP(1,INDEX(2)),
+     + VECP(2,INDEX(2)),
+     + VECP(3,INDEX(2)),
+     + VECP(7,INDEX(2)),
+     + ATAN2(VECP(2,INDEX(2)),VECP(1,INDEX(2))),
+     + ACOS(VECP(3,INDEX(2))/VECP(6,INDEX(2))),
+     + SQRT(PTMX**2 + PTMY**2),
+     + ATAN2(PTMY,PTMX)
+*
+*--   Fill the histograms
+*
+      AAA=VECP(7,INDEX(1))/VECP(6,INDEX(1))
+      BBB=VECP(7,INDEX(2))/VECP(6,INDEX(2))
+*
+      CALL HFILL(2001,VECP(6,INDEX(1)),0.,1.)
+      CALL HFILL(2002,THETA(1),0.,1.)
+      CALL HFILL(2007,VECP(6,INDEX(1)),VECP(6,INDEX(2)),1.)
+      CALL HFILL(2009,THETA(1),VECP(6,INDEX(1)),1.)
+      CALL HFILL(2011,PHI(1),THETA(1),1.)
+      CALL HFILL(2012,THETA(1),EEM(1),1.)
+      CALL HFILL(2013,THETA(1),EHC(1),1.)
+      CALL HFILL(2014,PHI(1),EEM(1),1.)
+      CALL HFILL(2015,PHI(1),EHC(1),1.)
+      CALL HFILL(2502,THETA(1),AAA,1.)
+*
+      CALL HFILL(2001,VECP(6,INDEX(2))  ,0.  ,1.)
+      CALL HFILL(2010,PHI(2),VECP(6,INDEX(2))  ,1.)
+      CALL HFILL(2010,PHI(1),VECP(6,INDEX(1))  ,1.)
+      CALL HFILL(2502,THETA(2),BBB  ,1.)
+      CALL HFILL(2002,THETA(2),0.  ,1.)
+      CALL HFILL(2008,EEM(1),EEM(2),1.)
+      CALL HFILL(2009,THETA(2),VECP(6,INDEX(2))  ,1.)
+      CALL HFILL(2011,PHI(2),THETA(2),1.)
+      CALL HFILL(2012,THETA(2),EEM(2),1.)
+      CALL HFILL(2013,THETA(2),EHC(2),1.)
+      CALL HFILL(2014,PHI(2),EEM(2),1.)
+      CALL HFILL(2015,PHI(2),EHC(2),1.)
+*
+      CALL HFILL(2016,QVTX(6,1),QVTX(6,2),1.)
+      CALL HFILL(2017,QVTX(6,3),0.,1.)
+*
+      NHIT1 = 0
+      NHIT2 = 0
+      DO III = 1,7
+        IF (JBIT(INT(KMUID(3,INDEX(1))),III).EQ.1) NHIT1 = NHIT1 + 1
+        IF (JBIT(INT(KMUID(3,INDEX(2))),III).EQ.1) NHIT2 = NHIT2 + 1
+      ENDDO
+*
+      IF (THETA(1).GT.45. .AND. THETA(1).LT.135.) THEN
+        CALL HFILL(2100,THETA(1),EEM(1)/VECP(6,INDEX(1)),1.)
+        CALL HFILL(2101,PHI(1),EEM(1)/VECP(6,INDEX(1)),1.)
+      END IF
+      IF (THETA(2).GT.45. .AND. THETA(2).LT.135.) THEN
+        CALL HFILL(2100,THETA(2),EEM(2)/VECP(6,INDEX(2)),1.)
+        CALL HFILL(2101,PHI(2),EEM(2)/VECP(6,INDEX(2)),1.)
+      END IF
+      IF (THETA(1).GT.45. .AND. THETA(1).LT.135. .AND.
+     +    THETA(2).GT.45. .AND. THETA(2).LT.135.) THEN
+        CALL HFILL(2104,1./VECP(6,INDEX(1)),0.,1.)
+        CALL HFILL(2104,1./VECP(6,INDEX(2)),0.,1.)
+        CALL HFILL(2003,PHI(1),0.,1.)
+        CALL HFILL(2003,PHI(2),0.,1.)
+        CALL HFILL(2004,EEM(1),0.,1.)
+        CALL HFILL(2004,EEM(2),0.,1.)
+        CALL HFILL(2005,EHC(1),0.,1.)
+        CALL HFILL(2005,EHC(2),0.,1.)
+        CALL HFILL(2006,FLOAT(NHIT1),0.,1.)
+        CALL HFILL(2006,FLOAT(NHIT2),0.,1.)
+        CALL HFILL(2010,PHI(1),VECP(6,INDEX(1)),1.)
+        CALL HFILL(2010,PHI(2),VECP(6,INDEX(2)),1.)
+        CALL HFILL(2501,AAA,0.,1.)
+        CALL HFILL(2501,BBB,0.,1.)
+*
+*--   Detector dependence
+        NBIT = KTRAC(25,INDEX(1))
+        IF (VECP(6,INDEX(1)).LE.0.) GOTO 111
+        IF (JBIT(NBIT,1).EQ.1 .AND. JBIT(NBIT,2).EQ.1 .AND.
+     +      JBIT(NBIT,3).EQ.1 .AND. JBIT(NBIT,4).EQ.1) THEN
+          CALL HFILL(2200,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+        IF (JBIT(NBIT,1).EQ.1 .AND. JBIT(NBIT,2).EQ.1 .AND.
+     +      JBIT(NBIT,3).EQ.1 .AND. JBIT(NBIT,4).EQ.0) THEN
+          CALL HFILL(2201,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+        IF (JBIT(NBIT,1).EQ.0 .AND. JBIT(NBIT,2).EQ.1 .AND.
+     +      JBIT(NBIT,3).EQ.1 .AND. JBIT(NBIT,4).EQ.1) THEN
+          CALL HFILL(2202,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+
+        IF (JBIT(NBIT,1).EQ.1 .AND. JBIT(NBIT,2).EQ.1 .AND.
+     +      JBIT(NBIT,3).EQ.0 .AND. JBIT(NBIT,4).EQ.1) THEN
+          CALL HFILL(2203,1./VECP(6,INDEX(1)),0.,1.)
+          CALL HFILL(2503,THETA(1),0.,1.)
+        END IF
+
+        IF (JBIT(NBIT,1).EQ.1 .AND. JBIT(NBIT,2).EQ.0 .AND.
+     +      JBIT(NBIT,3).EQ.1 .AND. JBIT(NBIT,4).EQ.1) THEN
+          CALL HFILL(2204,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+*--   Two or more detectors out.
+        ITOT = JBIT(NBIT,1) + JBIT(NBIT,2) + JBIT(NBIT,3)
+     +         + JBIT(NBIT,4)
+        IF (ITOT.LE.2) THEN
+          CALL HFILL(2205,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+*
+  111   IF (VECP(6,INDEX(2)).LE.0.) GOTO 112
+        NBIT = KTRAC(25,INDEX(2))
+        IF (JBIT(NBIT,1).EQ.1 .AND. JBIT(NBIT,2).EQ.1 .AND.
+     +      JBIT(NBIT,3).EQ.1 .AND. JBIT(NBIT,4).EQ.1) THEN
+          CALL HFILL(2200,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+        IF (JBIT(NBIT,1).EQ.1 .AND. JBIT(NBIT,2).EQ.1 .AND.
+     +      JBIT(NBIT,3).EQ.1 .AND. JBIT(NBIT,4).EQ.0) THEN
+          CALL HFILL(2201,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+        IF (JBIT(NBIT,1).EQ.0 .AND. JBIT(NBIT,2).EQ.1 .AND.
+     +      JBIT(NBIT,3).EQ.1 .AND. JBIT(NBIT,4).EQ.1) THEN
+          CALL HFILL(2202,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+        IF (JBIT(NBIT,3).EQ.0) THEN
+          CALL HFILL(2203,1./VECP(6,INDEX(2)),0.,1.)
+          CALL HFILL(2503,THETA(2),0.,1.)
+        END IF
+        IF (JBIT(NBIT,1).EQ.1 .AND. JBIT(NBIT,2).EQ.0 .AND.
+     +      JBIT(NBIT,3).EQ.1 .AND. JBIT(NBIT,4).EQ.1) THEN
+          CALL HFILL(2204,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+*
+*--   Two or more detectors out.
+        ITOT = JBIT(NBIT,1) + JBIT(NBIT,2) + JBIT(NBIT,3)
+     +         + JBIT(NBIT,4)
+        IF (ITOT .LE. 2) THEN
+          CALL HFILL(2205,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+*
+  112   CONTINUE
+      ELSE IF ((THETA(1).LT.35. .AND. THETA(1).GT.20. .AND.
+     +          THETA(2).GT.145. .AND. THETA(2).LT.160.) .OR.
+     +          (THETA(2).LT.35. .AND. THETA(2).GT.20. .AND.
+     +          THETA(1).GT.145. .AND. THETA(1).LT.160.))  THEN
+        CALL HFILL(2106,1./VECP(6,INDEX(1)),0.,1.)
+        CALL HFILL(2106,1./VECP(6,INDEX(2)),0.,1.)
+        CALL HFILL(2303,PHI(1),0.,1.)
+        CALL HFILL(2303,PHI(2),0.,1.)
+        CALL HFILL(2304,EEM(1),0.,1.)
+        CALL HFILL(2304,EEM(2),0.,1.)
+        CALL HFILL(2305,EHC(1),0.,1.)
+        CALL HFILL(2305,EHC(2),0.,1.)
+        CALL HFILL(2306,FLOAT(NHIT1),0.,1.)
+        CALL HFILL(2306,FLOAT(NHIT2),0.,1.)
+        CALL HFILL(2310,PHI(1),VECP(6,INDEX(1)),1.)
+        CALL HFILL(2310,PHI(2),VECP(6,INDEX(2)),1.)
+        CALL HFILL(2801,AAA,0.,1.)
+        CALL HFILL(2801,BBB,0.,1.)
+*--   detector dependence
+        NBIT = KTRAC(25,INDEX(1))
+        IF (JBIT(NBIT,2).EQ.1 .AND. JBIT(NBIT,3).EQ.1 .AND.
+     +      JBIT(NBIT,5).EQ.1 .AND. JBIT(NBIT,6).EQ.1) THEN
+          CALL HFILL(2700,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+        IF (JBIT(NBIT,2).EQ.0 .AND. JBIT(NBIT,3).EQ.1 .AND.
+     +      JBIT(NBIT,5).EQ.1 .AND. JBIT(NBIT,6).EQ.1) THEN
+          CALL HFILL(2701,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+        IF (JBIT(NBIT,2).EQ.1 .AND. JBIT(NBIT,3).EQ.0 .AND.
+     +      JBIT(NBIT,5).EQ.1 .AND. JBIT(NBIT,6).EQ.1) THEN
+          CALL HFILL(2702,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+
+        IF (JBIT(NBIT,2).EQ.1 .AND. JBIT(NBIT,3).EQ.1 .AND.
+     +      JBIT(NBIT,5).EQ.0 .AND. JBIT(NBIT,6).EQ.1) THEN
+          CALL HFILL(2703,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+
+        IF (JBIT(NBIT,2).EQ.1 .AND. JBIT(NBIT,3).EQ.1 .AND.
+     +      JBIT(NBIT,5).EQ.1 .AND. JBIT(NBIT,6).EQ.0) THEN
+          CALL HFILL(2704,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+*--   Two or more detectors out.
+        ITOT = JBIT(NBIT,2) + JBIT(NBIT,3) + JBIT(NBIT,5)
+     +         + JBIT(NBIT,6)
+        IF (ITOT .LE. 2)                          THEN
+          CALL HFILL(2705,1./VECP(6,INDEX(1)),0.,1.)
+        END IF
+*
+        NBIT = KTRAC(25,INDEX(2))
+        IF (JBIT(NBIT,2).EQ.1 .AND. JBIT(NBIT,3).EQ.1 .AND.
+     +      JBIT(NBIT,5).EQ.1 .AND. JBIT(NBIT,6).EQ.1) THEN
+          CALL HFILL(2700,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+        IF (JBIT(NBIT,2).EQ.0 .AND. JBIT(NBIT,3).EQ.1 .AND.
+     +      JBIT(NBIT,5).EQ.1 .AND. JBIT(NBIT,6).EQ.1) THEN
+          CALL HFILL(2701,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+        IF (JBIT(NBIT,2).EQ.1 .AND. JBIT(NBIT,3).EQ.0 .AND.
+     +      JBIT(NBIT,5).EQ.1 .AND. JBIT(NBIT,6).EQ.1) THEN
+          CALL HFILL(2702,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+
+        IF (JBIT(NBIT,2).EQ.1 .AND. JBIT(NBIT,3).EQ.1 .AND.
+     +      JBIT(NBIT,5).EQ.0 .AND. JBIT(NBIT,6).EQ.1) THEN
+          CALL HFILL(2703,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+
+        IF (JBIT(NBIT,2).EQ.1 .AND. JBIT(NBIT,3).EQ.1 .AND.
+     +      JBIT(NBIT,5).EQ.1 .AND. JBIT(NBIT,6).EQ.0) THEN
+          CALL HFILL(2704,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+*--   Two or more detectors out.
+        ITOT = JBIT(NBIT,2) + JBIT(NBIT,3) + JBIT(NBIT,5)
+     +         + JBIT(NBIT,6)
+        IF (ITOT.LE.2) THEN
+          CALL HFILL(2705,1./VECP(6,INDEX(2)),0.,1.)
+        END IF
+      END IF
+*
+  999 RETURN
+      END
+*
++DECK,MYCSV. ***********************************************************
+      SUBROUTINE MYCSV
+************************************************************************
+*                                                                      *
+*     Name           :  MYCSV                                          *
+*     Called by      :  MYANA                                          *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PHCIII.
++CDE,PSCEVT.
++CDE,PSCVEC.
++CDE,PSCVECJJ.
++CDE,PSCBTG.
+*
+      REAL PHI1, PHI2, PHI3
+      REAL THETA1, THETA2, THETA3
+*
+      PHI1 = 0
+      PHI2 = 0
+      PHI3 = 0.
+      THETA1 = 0.
+      THETA2 = 0.
+      THETA3 = 0.
+      IF ( NJET .GT. 0) THEN
+          PHI1 = ATAN2(VECP(2,LVJET+1),VECP(1,LVJET+1))
+          THETA1 = ACOS(VECP(3,LVJET+1)/VECP(6,LVJET+1))
+      ENDIF
+      IF ( NJET .GT. 1) THEN
+          PHI2 = ATAN2(VECP(2,LVJET+2),VECP(1,LVJET+2))
+          THETA2 = ACOS(VECP(3,LVJET+2)/VECP(6,LVJET+2))
+      ENDIF
+      IF ( NJET .GT. 2) THEN
+          PHI3 = ATAN2(VECP(2,LVJET+3),VECP(1,LVJET+3))
+          THETA3 = ACOS(VECP(3,LVJET+3)/VECP(6,LVJET+3))
+      ENDIF
+*
+      WRITE(29,'(1X,I9,",",I9,",",F10.2,",",I2,25(",",F10.2))')
+     +   IIIRUN,
+     +   IIIEVT,
+     +   ECMAS,
+     +   NJET,
+     +   VECP(4,LVJET+1),
+     +   VECP(6,LVJET+1),
+     +   SQRT(VECP(1,LVJET+1)**2 + VECP(2,LVJET+1)**2),
+     +   VECP(1,LVJET+1),
+     +   VECP(2,LVJET+1),
+     +   VECP(3,LVJET+1),
+     +   PHI1,
+     +   THETA1,
+     +   VECP(4,LVJET+2),
+     +   VECP(6,LVJET+2),
+     +   SQRT(VECP(1,LVJET+2)**2 + VECP(2,LVJET+2)**2),
+     +   VECP(1,LVJET+2),
+     +   VECP(2,LVJET+2),
+     +   VECP(3,LVJET+2),
+     +   PHI2,
+     +   THETA2,
+     +   VECP(4,LVJET+3),
+     +   VECP(6,LVJET+3),
+     +   SQRT(VECP(1,LVJET+3)**2 + VECP(2,LVJET+3)**2),
+     +   VECP(1,LVJET+3),
+     +   VECP(2,LVJET+3),
+     +   VECP(3,LVJET+3),
+     +   PHI3,
+     +   THETA3,
+     +   QBTPRS(3)
+
+      END
++DECK,MYSTA. ***********************************************************
+      SUBROUTINE MYSTAT
+************************************************************************
+*                                                                      *
+*     Name           :  MYSTAT                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  NOV 09, 1995                                   *
+*     Autor          :  F. Cossutti                                    *
+*     Last update    :  F. Cossutti - 09-NOV-1995                      *
+*     Task           :  Statistic                                      *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PHCIII.
++CDE,PSCEVT.
++CDE,PSCRV0.
++CDE,PSCPHC.
++CDE,PSCVEC.
++CDE,PSCTRA.
++CDE,PSCHPC.
++CDE,PSCEMF.
++CDE,PSCHAC.
++CDE,PSCMUD.
++CDE,PSCELO.
++CDE,PSCHAD.
++CDE,PSCDEX.
++CDE,PSCGRC.
++CDE,PSCLRC.
++CDE,PSCELD.
++CDE,PSCELT.
++CDE,PSCPHO.
++CDE,PSCPI0.
++CDE,PSCVTX.
+*
+*-----------------------------------------------------------------------
+*
+      CALL HFILL(3001,FLOAT(NCTRK),0.,1.)
+      CALL HFILL(3002,FLOAT(NNTRK),0.,1.)
+      CALL HFILL(3003,FLOAT(NCTR4),0.,1.)
+      CALL HFILL(3004,FLOAT(NVECP),0.,1.)
+      CALL HFILL(3005,FLOAT(NTRAC),0.,1.)
+      CALL HFILL(3006,FLOAT(NRV0),0.,1.)
+      CALL HFILL(3007,FLOAT(NPHOC),0.,1.)
+      CALL HFILL(3008,FLOAT(NHPC),0.,1.)
+      CALL HFILL(3009,FLOAT(NEMF),0.,1.)
+      CALL HFILL(3010,FLOAT(NHAC),0.,1.)
+      CALL HFILL(3011,FLOAT(NMUID),0.,1.)
+      CALL HFILL(3012,FLOAT(NELOU),0.,1.)
+      CALL HFILL(3013,FLOAT(NHAID),0.,1.)
+      CALL HFILL(3014,FLOAT(NDEDX),0.,1.)
+      CALL HFILL(3015,FLOAT(NGRIC),0.,1.)
+      CALL HFILL(3016,FLOAT(NLRIC),0.,1.)
+      CALL HFILL(3017,FLOAT(NELID),0.,1.)
+      CALL HFILL(3018,FLOAT(NELTR),0.,1.)
+      CALL HFILL(3019,FLOAT(NPHOT),0.,1.)
+      CALL HFILL(3020,FLOAT(NPI0),0.,1.)
+      CALL HFILL(3021,FLOAT(NVTX),0.,1.)
+*
+  999 RETURN
+      END
+*
++DECK,MYEVT. **********************************************************
+      SUBROUTINE MYEVEN
+************************************************************************
+*                                                                      *
+*     Name           :  MYEVEN                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  Nov 09, 1995 by F. Cossuti                     *
+*     Last update    :  Nov 09, 1995                                   *
+*     Task           :  To fill the histograms for general event       *
+*                       checks                                         *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PXCONS.
++CDE,PHCIII.
++CDE,PSCEVT.
++CDE,PSCVEC.
++CDE,PSCTRA.
++CDE,PSCVDA.
+*
+      INTEGER IDIM,NORD
+      PARAMETER (IDIM=5,NORD=5)
+      INTEGER III,JJJ,KKK,IFAIL,IR(NORD)
+      INTEGER ILAXY(3),ILAZ(3)
+*
+      REAL ERROR(IDIM,IDIM)
+*
+*--   functions
+      INTEGER JBIT,JBYT
+*-----------------------------------------------------------------------
+*
+      CALL HFILL(21,ECMAS,0.,1.)
+      CALL HFILL(22,ECHAR,0.,1.)
+      CALL HFILL(23,EMNEU,0.,1.)
+      CALL HFILL(24,EHNEU,0.,1.)
+*
+      DO 10 III=1,NVECP
+        CALL HFILL(25,VECP(6,III),0.,1.)
+   10 CONTINUE
+*
+      DO 20 III=1,NTRAC
+*
+	CALL HFILL(36,FLOAT(KTRAC(25,III)),0.,1.)
+	CALL HFILL(37,QTRAC(38,III),0.,1.)
+	CALL HFILL(38,QTRAC(39,III),0.,1.)
+	CALL HFILL(26,QTRAC(4,III),0.,1.)
+	CALL HFILL(27,QTRAC(5,III),0.,1.)
+	CALL HFILL(28,QTRAC(6,III)*180./PI,0.,1.)
+	CALL HFILL(29,QTRAC(7,III)*180./PI,0.,1.)
+	CALL HFILL(30,QTRAC(8,III),0.,1.)
+*
+*--   Define the weight matrix
+*
+	CALL VZERO(ERROR,25)
+	ERROR(1,1) = QTRAC(9,III)
+	ERROR(2,1) = QTRAC(10,III)
+	ERROR(2,2) = QTRAC(11,III)
+	ERROR(3,1) = QTRAC(12,III)
+	ERROR(3,2) = QTRAC(13,III)
+	ERROR(3,3) = QTRAC(14,III)
+	ERROR(4,1) = QTRAC(15,III)
+	ERROR(4,2) = QTRAC(16,III)
+	ERROR(4,3) = QTRAC(17,III)
+	ERROR(4,4) = QTRAC(18,III)
+	ERROR(5,1) = QTRAC(19,III)
+	ERROR(5,2) = QTRAC(20,III)
+	ERROR(5,3) = QTRAC(21,III)
+	ERROR(5,4) = QTRAC(22,III)
+	ERROR(5,5) = QTRAC(23,III)
+	DO JJJ = 1,4
+	  DO KKK = JJJ+1,5
+	    ERROR(JJJ,KKK) = ERROR(KKK,JJJ)
+	  ENDDO
+	ENDDO
+*
+*--   Invert it and produce the error matrix
+*
+	CALL RINV(NORD,ERROR,IDIM,IR,IFAIL)
+*
+	IF (IFAIL.EQ.0) THEN
+*
+	  IF (ERROR(1,1).GT.0.) CALL HFILL(31,SQRT(ERROR(1,1)),0.,1.)
+	  IF (ERROR(2,2).GT.0.) CALL HFILL(32,SQRT(ERROR(2,2)),0.,1.)
+	  IF (ERROR(3,3).GT.0.) 
+     +      CALL HFILL(33,SQRT(ERROR(3,3))*180./PI,0.,1.)
+	  IF (ERROR(4,4).GT.0.) 
+     +      CALL HFILL(34,SQRT(ERROR(4,4))*180./PI,0.,1.)
+	  IF (ERROR(5,5).GT.0.) CALL HFILL(35,SQRT(ERROR(5,5)),0.,1.)
+*	
+	ENDIF
+*
+   20 CONTINUE
+*
+  999 RETURN
+      END
+*
++DECK,MYSHOW. **********************************************************
+      SUBROUTINE MYSHOW
+************************************************************************
+*                                                                      *
+*     Name           :  MYSHOW                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  Dec 04, 1994 by A. Lopez-Aguera                *
+*     Last update    :  Nov 09, 1995 by F. Cossutti                    *
+*     Task           :  To fill the histograms for shower studies      *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PHCIII.
++CDE,PXCONS.
++CDE,PSCEVT.
++CDE,PSCVEC.
++CDE,PSCTRA.
++CDE,PSCEMF.
++CDE,PSCHPC.
++CDE,PSCHAC.
++CDE,PSCDEX.
++CDE,PSCBTG.
+*
+      INTEGER III,JJJ,ID,IDET
+*
+      REAL TH1,PH1,E1,EEM,THEM,PHEM,EHD,THHD,PHHD
+      REAL THETA,PHI
+*
+*-------------------------------------------------------------
+*
+*--   General energy flow checks
+*
+      CALL PXANGL(QBTTHR(1),QBTTHR(2),QBTTHR(3),THETA,PHI)
+      THETA = THETA*180./PI
+      PHI = PHI*180./PI
+*
+      CALL HFILL(5004,PHI,ECHAR,1.)
+      CALL HFILL(5005,THETA,ECHAR,1.)
+      CALL HFILL(5006,PHI,EMNEU,1.)
+      CALL HFILL(5007,THETA,EMNEU,1.)
+      CALL HFILL(5008,PHI,EHNEU,1.)
+      CALL HFILL(5009,THETA,EHNEU,1.)
+*
+*--   Calorimeter showers
+*
+      DO III=1,NVECP
+*
+        EEM = 0.
+	THEM = 0.
+	PHEM = 0.
+	EHD = 0.
+	THHD = 0.
+	PHHD = 0.
+	E1 = 0.
+	TH1 = 0.
+	PH1 = 0.
+        IDET = 0
+*
+        DO JJJ=1,2
+*
+	  IF (JJJ.EQ.1) THEN
+* 
+*--   Electromagnetic showers
+*
+	    IF (QHPC(1,III).GT.0.) THEN
+*
+*--   HPC
+*
+	      IDET = 1
+	      EEM = QHPC(1,III)
+	      THEM = QHPC(2,III)
+	      PHEM = QHPC(3,III)
+	      CALL HFILL(5001,FLOAT(KHPC(7,III)),
+     +          QHPC(8,III)-QHPC(1,III),1.)
+*
+              IF (EEM.LE.0.) GOTO 777
+            ELSEIF (QEMF(1,III).GT.0.) THEN
+*
+*--   EMF
+*
+	      IDET = 2
+	      EEM = QEMF(1,III)
+	      THEM = QEMF(2,III)
+	      PHEM = QEMF(3,III)
+	      CALL HFILL(5002,FLOAT(KEMF(7,III)),
+     +          QEMF(8,III)-QEMF(1,III),1.)
+*
+              IF (EEM.LE.0.) GOTO 777
+	    ENDIF
+	  ELSE
+*
+*--   Hadronic showers
+*
+            IDET = 3
+	    EHD = QHAC(1,III)	    
+	    THHD = QHAC(2,III)
+	    PHHD = QHAC(3,III)
+            CALL HFILL(5003,FLOAT(KHAC(7,III)),
+     +        QHAC(8,III)-QHAC(1,III),1.)
+*
+            IF (EHD.LE.0.) GOTO 777
+          ENDIF
+*
+	  IF (JJJ.EQ.1) THEN
+            TH1 = THEM
+            PH1 = PHEM
+            E1 = EEM
+          ELSE
+            TH1 = THHD
+            PH1 = PHHD
+            E1 = EHD
+          ENDIF
+*
+*--   Fill the histograms
+*
+          TH1 = TH1*180./PI
+          PH1 = PH1*180./PI
+*
+          IF (VECP(7,III).NE.0.) THEN
+	    CALL HFILL(5001+IDET*10,PH1,E1,1.)
+	    CALL HFILL(5002+IDET*10,TH1,E1,1.)
+	    CALL HFILL(5003+IDET*10,PH1,TH1,1.)
+            IF (VECP(7,III).GT.0.) THEN
+	      CALL HFILL(5004+IDET*10,VECP(6,III),E1,1.)
+	    ELSE
+	      CALL HFILL(5005+IDET*10,VECP(6,III),E1,1.)
+	    ENDIF
+	  ELSE
+	    CALL HFILL(5006+IDET*10,PH1,E1,1.)
+	    CALL HFILL(5007+IDET*10,TH1,E1,1.)
+	    CALL HFILL(5008+IDET*10,PH1,TH1,1.)
+	    CALL HFILL(5009+IDET*10,VECP(6,III),E1,1.)
+	  ENDIF
+*
+  777   ENDDO
+*
+      ENDDO
+*
+  999 RETURN
+      END
+*
++DECK,MYELID. **********************************************************
+      SUBROUTINE MYELID
+************************************************************************
+*                                                                      *
+*     Name           :  MYELID                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  May 04, 1995 by F. Cossutti                    *
+*     Last update    :  Nov 09, 1995                                   *
+*     Task           :  To fill the histograms for the electron        *
+*                       identification in hadronic events              *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PHCIII.
++CDE,PSCEVT.
++CDE,PSCVEC.
++CDE,PSCELD.
++CDE,PSCBTG.
++CDE,PSCELO.
++CDE,PSCHPC.
+*
+      INTEGER III
+*
+*------------------------------------------------------------
+*
+      IF (NELID.EQ.0) GOTO 999
+*
+*--   Select all identified electrons (very loose)
+*
+      DO III = 1,NCVECP
+*
+        CALL HFILL(6001,FLOAT(KELID(1,III)),0.,1.)
+        CALL HFILL(6002,FLOAT(KELID(2,III)),0.,1.)
+*
+        IF (KELID(1,III).GE.1) THEN
+*
+          CALL HFILL(6003,VECP(6,III),QELOU(1,III),1.)
+          CALL HFILL(6004,QELOU(2,III),0.,1.)       
+          CALL HFILL(6005,QELOU(3,III),0.,1.)
+          CALL HFILL(6006,QELOU(4,III),0.,1.)
+          CALL HFILL(6007,VECP(6,III),QELOU(5,III),1.)
+          CALL HFILL(6008,QELOU(9,III),0.,1.)
+          CALL HFILL(6009,QELOU(27,III),0.,1.)
+          CALL HFILL(6010,VECP(6,III),QELOU(28,III),1.)
+*
+        ENDIF
+*
+        IF (KELID(1,III).GE.4 .AND. QHPC(1,III).GT.0.) THEN                         
+*	                                                    
+          CALL HFILL(6013,VECP(6,III),QELOU(1,III),1.)                
+          CALL HFILL(6014,QELOU(2,III),0.,1.)               
+          CALL HFILL(6015,QELOU(3,III),0.,1.)               
+          CALL HFILL(6016,QELOU(4,III),0.,1.)               
+          CALL HFILL(6017,VECP(6,III),QELOU(5,III),1.)   
+          CALL HFILL(6018,QELOU(9,III),0.,1.)               
+          CALL HFILL(6019,QELOU(27,III),0.,1.)              
+          CALL HFILL(6020,VECP(6,III),QELOU(28,III),1.)      
+*	                                                    
+        ENDIF                                               
+*
+      ENDDO
+*
+  999 RETURN
+      END
+*
++DECK,MYMUID. **********************************************************
+      SUBROUTINE MYMUID
+************************************************************************
+*                                                                      *
+*     Name           :  MYMUID                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  May 09, 1995 by F. Cossutti                    *
+*     Last update    :  Nov 09, 1995                                   *
+*     Task           :  To fill the histograms for the muon            *
+*                       identification in hadronic events              *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PXCONS.
++CDE,PSCVEC.
++CDE,PSCMUD.
++CDE,PSCMUV.
++CDE,PSCMUL.
++CDE,PSCMUT.
+*
+*--   functions
+      INTEGER JBIT
+*
+*--   local variables
+      INTEGER III,JJJ,NMU(5)
+*
+      REAL THETA,PHI
+*------------------------------------------------------------
+*
+      IF (NMUID.EQ.0) THEN
+	CALL HFILL(7001,0.,0.,1.)
+        GOTO 999
+      ENDIF
+*
+      CALL VZERO(NMU,5)
+*
+      DO III= 1,NCVECP
+*
+*--   Select muons according the identification flag
+*
+        IF (KMUID(1,III).NE.0) THEN
+*
+	  DO JJJ = 1,5
+	    IF (JBIT(KMUID(1,III),JJJ).EQ.1) NMU(JJJ) = NMU(JJJ)+1
+          ENDDO
+*
+	  CALL PXANGL(VECP(1,III),VECP(2,III),VECP(3,III),
+     +      THETA,PHI)
+*
+*--   Standard identification
+* 
+	  IF (JBIT(KMUID(1,III),3).EQ.1) THEN
+*
+	    CALL HFILL(7010,VECP(6,III),0.,1.)
+	    CALL HFILL(7011,COS(THETA),0.,1.)
+	    CALL HFILL(7012,PHI*180./PI,0.,1.)
+*
+	    IF (JBIT(KMULS(1,III),8).EQ.1) THEN
+*--   MUB
+              CALL HFILL(7013,QMULS(9,III),0.,1.)
+	      CALL HFILL(7014,QMULS(7,III),0.,1.)
+	    ELSE
+*--   MUF
+              CALL HFILL(7015,QMULS(9,III),0.,1.)
+	      CALL HFILL(7016,QMULS(7,III),0.,1.)
+	      CALL HFILL(7017,QMULS(8,III),0.,1.)
+	    ENDIF
+*
+          ENDIF
+*
+*--   Tight identification
+*
+	  IF (JBIT(KMUID(1,III),4).EQ.1) THEN
+*
+	    CALL HFILL(7020,VECP(6,III),0.,1.)
+	    CALL HFILL(7021,COS(THETA),0.,1.)
+	    CALL HFILL(7022,PHI*180./PI,0.,1.)
+*
+	    IF (JBIT(KMUTI(1,III),8).EQ.1) THEN
+*--   MUB
+              CALL HFILL(7023,QMUTI(6,III),0.,1.)
+	      CALL HFILL(7024,QMUTI(4,III),0.,1.)
+	    ELSE
+*--   MUF
+              CALL HFILL(7025,QMUTI(6,III),0.,1.)
+	      CALL HFILL(7026,QMUTI(4,III),0.,1.)
+	      CALL HFILL(7027,QMUTI(5,III),0.,1.)
+	    ENDIF
+*
+          ENDIF
+*
+        ENDIF
+*
+      ENDDO
+*
+      CALL HFILL(7001,FLOAT(NMU(1)),0.,1.)
+      CALL HFILL(7002,FLOAT(NMU(2)),0.,1.)
+      CALL HFILL(7003,FLOAT(NMU(3)),0.,1.)
+      CALL HFILL(7004,FLOAT(NMU(4)),0.,1.)
+      CALL HFILL(7005,FLOAT(NMU(5)),0.,1.)
+*
+  999 RETURN
+      END
+*
++DECK,MYV0ID. **********************************************************
+      SUBROUTINE MYV0ID
+************************************************************************
+*                                                                      *
+*     Name           :  MYV0ID                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  Dec 04, 1994 by A. Lopez-Aguera                *
+*     Last update    :  Nov 09, 1995 by F. Cossutti                    *
+*     Task           :  To fill the histograms for the V0's            *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PXCONS.
++CDE,PSCRV0.
++CDE,PHCIII.
++CDE,PSCBSP.
++CDE,PSCEVT.
++CDE,PSCVEC.
++CDE,PSCHAD.
+*
+*--   functions
+      REAL VDOTN,VDIST,VMOD,VDOT
+*
+*--   local variables 
+      REAL LMASS,KMASS
+      PARAMETER (LMASS=1.11557,KMASS=0.49768)
+*
+      INTEGER III,JJJ,IFLAG
+*
+      REAL DD,P1(3),PP1,P2(3),PP2,AX(3),PL1,PL2,PT1,PT2
+      REAL PV0(3),AMASS,DM,ALFA,BETA,GAMMA,THETA,PHI,CTAU
+*-----------------------------------------------------------------------
+*
+      IF (NRV0.EQ.0) GOTO 999
+*
+      DO III=1,NRV0
+*
+        IF ( KRV0(5,III) .GE. 1 ) THEN
+*
+          DO JJJ = 1,3
+  	    P1(JJJ) = QRV0(12+JJJ,III)
+	    P2(JJJ) = QRV0(15+JJJ,III)
+	    AX(JJJ) = QRV0(7+JJJ,III)
+          ENDDO
+*
+          CALL VADD(P1, P2, PV0, 3)
+          IF (QRV0(6,III) .EQ. 0.) THEN
+            QRV0(6,III) = VMOD(PV0,3)
+          ENDIF
+          CALL PXANGL(PV0(1),PV0(2),PV0(3),THETA,PHI)
+	  THETA = THETA*180./PI
+	  PHI = PHI*180./PI
+*
+          PP1 = VMOD(P1,3)
+          PP2 = VMOD(P2,3)
+*
+*--   Compute the pt with respect to the flight direction
+*
+          PL1 = VDOT(P1,AX,3)/VMOD(AX,3)
+          IF (PL1.GE.PP1) THEN                    
+            PT1 = 0.                          
+          ELSE                                
+            PT1 = SQRT(PP1**2 - PL1**2)       
+          ENDIF                               
+*                                             
+          PL2 = VDOT(P2,AX,3)/VMOD(AX,3)      
+          IF (PL2.GT.PP2) THEN                
+            PT2 = 0.                          
+          ELSE                                
+            PT2 = SQRT(PP2**2 - PL2**2)       
+          ENDIF                               
+*
+*--   Armenteros plot
+*
+          ALFA = (PP1**2 - PP2**2)
+          BETA =  (PP1 + ABS(PP2))**2
+          GAMMA = ALFA/BETA
+*
+	  IF (QRV0(19,III).EQ.0.) THEN
+	    IFLAG = KRV0(5,III)
+	    IF (IFLAG.GT.3) IFLAG = NINT(MOD(FLOAT(IFLAG),10.))
+	    CALL INVAMA(P1(1),P1(2),P1(3),P2(1),P2(2),P2(3),
+     &        IFLAG,AMASS,DM)
+            QRV0(19,III) = AMASS
+	  ENDIF
+*
+*--   c*tau
+*
+	  DD = VDIST(AX,XYZBS,3)                
+          IF (KRV0(5,III).EQ.2.OR.KRV0(5,III).EQ.22) THEN
+            CTAU = DD*KMASS/QRV0(6,III)
+          ELSEIF (KRV0(5,III).EQ.3.OR.KRV0(5,III).EQ.33) THEN
+            CTAU = DD*LMASS/QRV0(6,III)
+          ENDIF
+*
+*--   fill the histograms
+*
+          CALL HFILL(8010,FLOAT(KRV0(5,III)),0.,1.)
+          IF (FLOAT(KRV0(5,III)).EQ.3. .OR. 
+     +      FLOAT(KRV0(5,III)).EQ.33.) THEN
+            CALL HFILL(8001,ABS(QRV0(19,III)),0.,1.)
+            IF (QRV0(19,III).GT.0) CALL HFILL(8003,QRV0(6,III),0.,1.)
+            IF (QRV0(19,III).LT.0) CALL HFILL(8004,QRV0(6,III),0.,1.)
+            CALL HFILL(8006,CTAU,0.,1.)                                
+            CALL HFILL(8009,GAMMA,PT1,1.)                              
+            CALL HFILL(8009,GAMMA,PT2,1.)                              
+            CALL HFILL(8011,QRV0(11,III),0.,1.)
+            CALL HFILL(8015,QRV0(11,III),THETA,1.)                           
+            CALL HFILL(8017,QRV0(11,III),PHI,1.)                               
+            CALL HFILL(8013,QRV0(7,III),0.,1.)                                
+            CALL HFILL(8019,QRV0(7,III),THETA,1.)                             
+            CALL HFILL(8021,QRV0(7,III),PHI,1.)                               
+          ELSEIF (FLOAT(KRV0(5,III)).EQ.2. .OR. 
+     +      FLOAT(KRV0(5,III)).EQ.22.) THEN                    
+            CALL HFILL(8002,QRV0(19,III),0.,1.) 
+            CALL HFILL(8005,QRV0(6,III),0.,1.)                                 
+            CALL HFILL(8007,CTAU,0.,1.)                                
+            CALL HFILL(8008,GAMMA,PT1,1.)                              
+            CALL HFILL(8008,GAMMA,PT2,1.)                              
+            CALL HFILL(8012,QRV0(11,III),0.,1.)                                
+            CALL HFILL(8016,QRV0(11,III),THETA,1.)                             
+            CALL HFILL(8018,QRV0(11,III),PHI,1.)                               
+            CALL HFILL(8014,QRV0(7,III),0.,1.)                                
+            CALL HFILL(8020,QRV0(7,III),THETA,1.)                             
+            CALL HFILL(8022,QRV0(7,III),PHI,1.)                               
+          ENDIF                                                        
+*
+*--   Checks on proton identification
+*
+          IF (KRV0(1,III).GE.1 .AND. KRV0(1,III).LE.MTRACK .AND.
+     &      KRV0(2,III).GE.1 .AND. KRV0(2,III).LE.MTRACK) THEN
+          IF (KHAID(3,KRV0(1,III)).GE.1 .OR. KHAID(3,KRV0(2,III)).GE.1)
+     +      CALL HFILL(8031,ABS(QRV0(19,III)),0.,1.)
+          IF (KHAID(3,KRV0(1,III)).GE.2 .OR. KHAID(3,KRV0(2,III)).GE.2)
+     +      CALL HFILL(8032,ABS(QRV0(19,III)),0.,1.)
+          ENDIF
+*
+        ENDIF
+      ENDDO
+*
+  999 RETURN
+      END
+*
++DECK, INVAMA.
+      SUBROUTINE INVAMA(PX1,PY1,PZ1,PX2,PY2,PZ2,IPART,AMINV,DM)
+*     ---------------------------------------------------------
+*     
+*     Compute the invariant masses in the photon (IPART=1), kaon
+*     (IPART=2) or lambda (IPART=3) hypothesis
+*     
+      IMPLICIT NONE
+      REAL PRM, PIM, ELM, K0M, L0M
+      PARAMETER (PRM=0.9382723, PIM=0.1395679, ELM=0.0005110)
+      PARAMETER (K0M=0.497671,L0M=1.11563)
+      REAL PX1,PY1,PZ1,PX2,PY2,PZ2,AMINV,DM,AMREF,P1(4),P2(4),RM(2)
+      INTEGER IPART
+*     
+      P1(1) = PX1
+      P1(2) = PY1
+      P1(3) = PZ1
+      P1(4) = SQRT(PX1**2+PY1**2+PZ1**2)
+      P2(1) = PX2
+      P2(2) = PY2
+      P2(3) = PZ2
+      P2(4) = SQRT(PX2**2+PY2**2+PZ2**2)
+*     
+      IF (IPART .EQ. 1) THEN
+        RM(1) = ELM
+        RM(2) = ELM
+        AMREF = 0.
+      ELSEIF (IPART .EQ. 2) THEN
+        RM(1) = PIM
+        RM(2) = PIM
+        AMREF = K0M
+      ELSEIF (IPART .EQ. 3) THEN
+        IF (P1(4) .GT. P2(4)) THEN
+          RM(1) = PRM
+          RM(2) = PIM
+        ELSE
+          RM(2) = PRM
+          RM(1) = PIM
+        ENDIF
+        AMREF = L0M
+      ENDIF
+*     
+      CALL INVMAS (P1,P2,RM,AMINV)
+      DM = AMINV-AMREF
+*     
+      RETURN
+      END
+*     
++DECK, MYPHOT.==========================================================
+      SUBROUTINE MYPHOT
+************************************************************************
+*                                                                      *
+*     Name           :  MYPHOT                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  Feb 15, 1995 by F. Cossutti                    *
+*     Last update    :  Nov 09, 1995                                   *
+*     Task           :  To fill the histograms for the converted       *
+*                       photons                                        *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE 
+*
++CDE,PXCONS.
++CDE,PSCPHC.      
+*
+*--   local variables
+      INTEGER III
+*
+      REAL THETA,PHI,RADIUS
+*-----------------------------------------------------------------------
+*
+      IF (NPHOC.EQ.0) GOTO 999          
+*
+*--   loop on all converted photons for the event
+*
+      DO 10 III = 1,NPHOC
+*
+	IF (QPHOC(8,III).EQ.0.) QPHOC(8,III) = 
+     &    SQRT(QPHOC(5,III)**2+QPHOC(6,III)**2+QPHOC(7,III)**2)
+*
+	CALL PXANGL(QPHOC(5,III),QPHOC(6,III),QPHOC(7,III),THETA,PHI)
+	THETA = THETA*180./PI
+	PHI = PHI*180./PI
+*
+*--   fill the histograms
+*
+        CALL HFILL(9021,THETA,QPHOC(8,III),1.)
+	CALL HFILL(9022,PHI,QPHOC(8,III),1.)
+	RADIUS = SQRT(QPHOC(10,III)**2+QPHOC(11,III)**2)
+        CALL HFILL(9023,QPHOC(12,III),RADIUS,1.)
+	CALL HFILL(9024,FLOAT(KPHOC(4,III)),0.,1.)
+	CALL HFILL(9025,PHI,0.,1.)
+	CALL HFILL(9026,THETA,QPHOC(9,III),1.)
+*
+   10 CONTINUE  
+*
+  999 RETURN
+      END
+*
++DECK,MYRICH. **********************************************************
+      SUBROUTINE MYRICH
+************************************************************************
+*                                                                      *
+*     Name           :  MYRICH                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  Jan 13, 1994 by A. Lopez-Aguera                *
+*     Last update    :  Nov 09, 1995                                   *
+*     Task           :  To fill the histogram for the hadron id        *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE 
+*
++CDE,PXCONS.                        
++CDE,PSCVEC.                        
++CDE,PSCTRA.                        
++CDE,PSCGRC.                        
++CDE,PSCLRC.
++CDE,PSCHAD.                        
++CDE,MINIRI.                        
++CDE,RIDECO.
++CDE,RIBPAR.
++CDE,RIBPHO.
+*     
+      INTEGER III,JJJ,IRICH,IOFFSE
+      INTEGER IQUAG,IQUAL
+      INTEGER IGBR,IGFR,ILBR,ILFR
+      INTEGER IBRICH(4),IFRICH(4)
+*     
+      REAL PULL
+*     
+      LOGICAL RIB,RIF,GOODG,GOODL,PGAS,PLIQ
+      LOGICAL GBR,GFR,LBR,LFR
+*     
+*     functions
+*     
+      INTEGER JBIT
+*     
+*-----------------------------------------------------------------------
+*     
+*     Initialize RICH software and choose the VECSUB pointer
+*     
+      CALL RIDECR
+      CALL GETMINE(2)
+      CALL RIBEVT(IBRICH,IFRICH)
+*     
+*     loop on all particles with RICH information
+*     
+      IGBR = 0
+      IGFR = 0
+      ILBR = 0
+      ILFR = 0
+*     
+      IF (NGRIC.NE.0 .OR. NLRIC.NE.0) THEN
+*     
+        DO 10 III = 1,NCVECP
+*     
+*     Get the RICH pointer 
+*     
+          CALL GETMINI(III,IRICH)
+          IF (IRICH.EQ.0) GOTO 10
+*     
+*     set the Barrel-Forward flags and cuts for checks
+*     
+*     Barrel
+          RIB = ABS(COS(QTRAC(6,III))).LT.0.75
+*     Forward
+          RIF = .NOT.RIB
+*     Momentum window for pull in gas
+          PGAS = VECP(6,III).LT.8. .AND. VECP(6,III).GT.4.
+*     Momentum window for pull in liquid
+          PLIQ = VECP(6,III).GT.8. .AND. VECP(6,III).LT.20.
+*     Quality words
+          IQUAG = KGRIC(5,III)
+          IQUAL = KLRIC(5,III)
+*     
+          GOODG = .FALSE.
+          GOODL = .FALSE.
+          GOODG = 
+     +      (JBIT(IQUAG,1)*JBIT(IQUAG,2)*JBIT(IQUAG,3).EQ.1) .AND. ((RIB
+     &      .AND. IBRICH(3).GT.0 .AND. IBRICH(4).GT.0) .OR. (RIF .AND.
+     &      IFRICH(3).GT.0 .AND. IFRICH(4).GT.0))
+          GOODL = 
+     +      (JBIT(IQUAL,1)*JBIT(IQUAL,2)*JBIT(IQUAL,3).EQ.1) .AND. ((RIB
+     &      .AND. IBRICH(1).GT.0 .AND. IBRICH(2).GT.0) .OR. (RIF .AND.
+     &      IFRICH(1).GT.0 .AND. IFRICH(2).GT.0))
+*     
+          GBR = (JBIT(IQUAG,1)*JBIT(IQUAG,2)*JBIT(IQUAG,3)*JBIT(IQUAG,4)
+     &      .EQ.1) .AND. RIB .AND. IBRICH(3).GE.0 .AND. IBRICH(4).GE.0
+          GFR = (JBIT(IQUAG,1)*JBIT(IQUAG,2)*JBIT(IQUAG,3)*JBIT(IQUAG,4)
+     &      .EQ.1) .AND. RIF .AND. IFRICH(3).GT.0 .AND. IFRICH(4).GT.0
+          LBR = (JBIT(IQUAL,1)*JBIT(IQUAL,2)*JBIT(IQUAL,3)*JBIT(IQUAL,4)
+     &      .EQ.1) .AND. RIB .AND. IBRICH(1).GT.0 .AND. IBRICH(2).GT.0
+          LFR = (JBIT(IQUAL,1)*JBIT(IQUAL,2)*JBIT(IQUAL,3)*JBIT(IQUAL,4)
+     &      .EQ.1) .AND. RIF .AND. IFRICH(1).GT.0 .AND. IFRICH(2).GT.0
+*     
+          IF (GBR) IGBR = IGBR+1
+          IF (GFR) IGFR = IGFR+1
+          IF (LBR) ILBR = ILBR+1
+          IF (LFR) ILFR = ILFR+1
+*     
+*     Fill the histograms
+*     
+*     Barrel or Forward
+*     
+          IOFFSE = 0
+          IF (RIF) IOFFSE = 3
+*     
+*     Gas:
+*     
+          IF (GOODG .AND. PGAS) THEN
+            CALL HFILL(11001+IOFFSE,FLOAT(KGRIC(3,III)),0.,1.)
+            IF (KGRIC(3,III).GT.1) THEN
+              CALL HFILL(11002+IOFFSE,QGRIC(1,III),0.,1.)
+              CALL HFILL(11013+IOFFSE,QGRIC(2,III),0.,1.)
+              PULL = (QGRIC(1,III)-RIGRIC(14,IRICH))/RIGRIC(21,IRICH)
+              CALL HFILL(11003+IOFFSE,PULL,0.,1.)
+            ENDIF
+          ENDIF
+*     
+*     Liquid:
+*     
+          IF (GOODL .AND. PLIQ) THEN
+            CALL HFILL(11007+IOFFSE,FLOAT(KLRIC(3,III)),0.,1.)
+            IF (KLRIC(3,III).GT.1) THEN
+              CALL HFILL(11008+IOFFSE,QLRIC(1,III),0.,1.)
+              CALL HFILL(11014+IOFFSE,QLRIC(2,III),0.,1.)
+              PULL = (QLRIC(1,III)-RILRIC(14,IRICH))/RILRIC(21,IRICH)
+              CALL HFILL(11009+IOFFSE,PULL,0.,1.)
+            ENDIF
+          ENDIF
+*
+*     Newtag tags checks
+*
+          IF (GOODG .AND. GOODL) THEN
+            IF (KHAIDT(1,III).GE.1) CALL HFILL(11031,VECP(6,III),0.,1.)
+            IF (KHAIDT(2,III).GE.1) CALL HFILL(11032,VECP(6,III),0.,1.)
+            IF (KHAIDT(3,III).GE.1) CALL HFILL(11033,VECP(6,III),0.,1.)
+          ENDIF
+*     
+ 10     CONTINUE
+*
+        CALL HFILL(11021,FLOAT(IGBR),0.,1.)
+        CALL HFILL(11022,FLOAT(IGFR),0.,1.)
+        CALL HFILL(11023,FLOAT(ILBR),0.,1.)
+        CALL HFILL(11024,FLOAT(ILFR),0.,1.)
+*
+      ENDIF
+*
+  999 RETURN
+      END
+*      
++DECK,MYSHOW. **********************************************************
+      SUBROUTINE MYDEDX
+************************************************************************
+*                                                                      *
+*     Name           :  MYDEDX                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  Dec 04, 1994 by A. Lopez-Aguera                *
+*     Last update    :  Nov 09, 1995 by F. Cossutti                    *
+*     Task           :  To fill the histograms for shower studies      *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE 
+*
++CDE,PXCONS.            
++CDE,PSCVEC.            
++CDE,PSCTRA.            
++CDE,PSCDEX.            
+*     
+      INTEGER III,ID1,ID2,IQUAL
+*     
+      REAL PULL1,PULL2
+      REAL DEDXH,PROBA
+      REAL THETA,PHI
+*     
+      LOGICAL NWIR1,NWIR2,P1,P2,BAR,FOR
+*     
+      CHARACTER*4 RECTYP,PHRTY
+*
+*     functions
+*
+      REAL BBDXID
+      INTEGER JBIT
+*-----------------------------------------------------------------------
+*     
+      IF (NDEDX.NE.0) THEN
+*     
+*     Check DST type
+*     
+        RECTYP = PHRTY()
+*     
+        DO III = 1,NCVECP
+*     
+          IF (JBIT(LVLOCK(III),32).EQ.0) THEN
+*
+*     Define cuts
+*     
+            NWIR1 = KDEDX(3,III).GE.50
+            NWIR2 = KDEDX(3,III).GE.30
+            P1 = VECP(6,III).GE.0.44 .AND. VECP(6,III).LE.0.66
+            P2 = VECP(6,III).GE.1.
+            BAR = ABS(COS(QTRAC(6,III))).LE.0.7
+            FOR = ABS(COS(QTRAC(6,III))).GT.0.7
+            CALL PXANGL(VECP(1,III),VECP(2,III),VECP(3,III),THETA,PHI)
+*     
+*     dEdx normalization checks
+*     
+            IF (BAR .AND. P1 .AND. NWIR1) 
+     &        CALL HFILL(11101,QDEDX(1,III),0.,1.)
+            IF (FOR .AND. P1 .AND. NWIR2) 
+     &        CALL HFILL(11102,QDEDX(1,III),0.,1.)
+*     
+*     Number of wires distribution
+*     
+            IF (P2) CALL HFILL(11103,FLOAT(KDEDX(3,III)),0.,1.)
+*     
+*     Pulls
+*     
+            IF (RECTYP.EQ.'DST ') THEN                   
+              ID1 = 41
+              ID2 = 42
+              PROBA = BBDXID(LVECP(III),ID1,ID2,PULL1,PULL2,IQUAL)
+              IF (NWIR1) CALL HFILL(11105,PULL1,0.,1.)   
+            ENDIF                                        
+*     
+*     dEdx vs p and cos(theta)
+*     
+            IF (NWIR1) CALL HFILL(11106,VECP(6,III),QDEDX(1,III),1.)
+            IF (NWIR1 .AND. P2) THEN
+              CALL HFILL(11107,COS(QTRAC(6,III)),QDEDX(1,III),1.)
+            ENDIF
+*     
+          ENDIF
+*     
+        ENDDO
+*     
+      ENDIF
+*
+  999 RETURN
+      END
+*      
++DECK,MYBTAG.***********************************************************
+      SUBROUTINE MYBTAG
+************************************************************************
+*                                                                      *
+*     Name           :  MYBTAG                                         *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  Dec 04, 1994 by F. Cossutti                    *
+*     Last update    :  Nov 09, 1995                                   *
+*     Task           :  To fill the histograms for the B tagging       *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PHCIII.
++CDE,PXCONS.
++CDE,PSCBTG.
++CDE,PSCVTX.
++CDE,PSCVEC.
++CDE,PSCTRA.
++CDE,PSCBSP.
+*
+*--   functions
+      REAL VMOD
+*
+*--   local variables
+*
+      REAL    THETA,PHI,THMOD
+*-----------------------------------------------------------------------
+*
+      CALL HFILL(12001,XYZBS(1),0.,1.)                                        
+      CALL HFILL(12002,XYZBS(2),0.,1.)                                   
+      CALL HFILL(12003,XYZBS(3),0.,1.)                                   
+      CALL HFILL(12004,SQRT(QVTX(10,1)),0.,1.)                             
+      CALL HFILL(12005,SQRT(QVTX(12,1)),0.,1.)                             
+      CALL HFILL(12006,SQRT(QVTX(15,1)),0.,1.)                             
+      CALL HFILL(12007,XYZBS(1)-QVTX(6,1),0.,1.)                           
+      CALL HFILL(12008,XYZBS(2)-QVTX(7,1),0.,1.)                           
+      CALL HFILL(12009,XYZBS(3)-QVTX(8,1),0.,1.)                           
+*                                                                        
+      CALL HFILL(12011,QBTPRP(1),0.,1.)                                  
+      CALL HFILL(12012,QBTPRP(2),0.,1.)                                  
+      CALL HFILL(12013,QBTPRP(3),0.,1.)                                      
+      IF (QBTPRP(1).GT.0.1 .AND. QBTPRP(1).LT.0.999)                     
+     &  CALL HFILL(12014,QBTPRN(1),0.,1.)                                
+      IF (QBTPRP(2).GT.0.1 .AND. QBTPRP(2).LT.0.999)                     
+     &  CALL HFILL(12015,QBTPRN(2),0.,1.)                                
+      IF (QBTPRP(3).GT.0.1 .AND. QBTPRP(3).LT.0.999)                          
+     &  CALL HFILL(12016,QBTPRN(3),0.,1.)                                    
+      CALL HFILL(12017,QBTPRS(1),0.,1.)                                  
+      CALL HFILL(12018,QBTPRS(2),0.,1.)                                  
+      CALL HFILL(12019,QBTPRS(3),0.,1.)                                      
+*                                                                        
+      CALL HFILL(12020,QBTTHR(4),0.,1.)                                  
+      CALL PXANGL(QBTTHR(1),QBTTHR(2),QBTTHR(3),THETA,PHI)               
+      THETA = THETA*180./PI                                              
+      PHI = PHI*180./PI                                                  
+      THMOD = VMOD(QBTTHR,3)                                             
+      CALL HFILL(12021,THMOD,0.,1.)                                      
+      CALL HFILL(12022,THETA,0.,1.)                                      
+      CALL HFILL(12023,PHI,0.,1.)                                        
+*
+  999 RETURN
+      END
+*
++DECK,MYPI0. ***********************************************************
+      SUBROUTINE MYPI0
+************************************************************************
+*                                                                      *
+*     Name           :  MYPI0                                          *
+*     Called by      :  MYANA                                          *
+*     Date of coding :  Nov 09, 1994 by F. Cossutti                    *
+*     Last update    :  Nov 09, 1995                                   *
+*     Task           :  To fill the histograms for identified          *
+*                       pi0 and photons in HPC                         *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE,PHCDE.
++CDE,PXCONS.
++CDE,PSCVEC.
++CDE,PSCTRA.
++CDE,PSCPI0.
++CDE,PSCPHO.
+*
+*--   local variables
+      INTEGER III,IPXPHO
+*
+      REAL THETA,PHI
+*-----------------------------------------------------------------------
+*
+      IF (NPI0.EQ.0 .AND. NPHOT.EQ.0) GOTO 999
+*
+      DO III = NCVECP+1,NVECP
+*
+        CALL PXANGL(VECP(1,III),VECP(2,III),VECP(3,III),THETA,PHI)
+	THETA = THETA*180./PI
+	PHI = PHI*180./PI
+*
+        CALL PXGECO(LVECP(III),IPXPHO)
+        CALL HFILL(15021,FLOAT(IPXPHO),0.,1.)
+*
+*--   Pi0 
+*
+        IF (IPXPHO.EQ.-101) THEN
+*
+	  CALL HFILL(15001,QPI0(12,III),0.,1.)          
+          CALL HFILL(15002,QPI0(15,III)*180./PI,0.,1.)          
+          CALL HFILL(15003,THETA,VECP(6,III),1.) 
+          CALL HFILL(15004,PHI,THETA,1.)
+*
+        ENDIF
+*
+*--   Gamma
+*
+        IF (IPXPHO.EQ.-1 .OR. IPXPHO.EQ.-11 .OR. IPXPHO.EQ.-39 .OR.
+     +    IPXPHO.EQ.-49 .OR. IPXPHO.EQ.-61) THEN
+*
+          CALL HFILL(15011,THETA,VECP(4,III),1.)
+          CALL HFILL(15012,PHI,THETA,1.)
+          CALL HFILL(15013,FLOAT(KPHOT(2,III)),0.,1.)
+*
+        ENDIF
+*
+      ENDDO
+*
+  999 RETURN
+      END
+*
+

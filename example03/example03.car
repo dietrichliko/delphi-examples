@@ -1,0 +1,284 @@
++PATCH,MYUSER.
++DECK,USER00. **********************************************************    
+      SUBROUTINE USER00                                                     
+************************************************************************    
+*                                                                      *    
+*     Name           :  USER00                                         *    
+*     Called by      :  PHINIT                                         *    
+*     Date of coding :  Oct 23, 1993                                   *    
+*     Last update    :  Mar 07, 1995                                   *    
+*     Task           :  User initialization                            *    
+*                                                                      *    
+************************************************************************    
+      IMPLICIT NONE                                                         
++CDE, PHCDE.                                                                
++CDE, PSCFLG.                                                               
++CDE, PSCRNQ.                                                               
+*
+*--   local variables                                                       
+*           
+      CALL PHSET('FPE',0)
+*--   Skelana initialization                                                
+      CALL PSINI                                                            
+*
+*--   Change the default values                                             
+*--   of control flags and keys                                             
+*
+      IFLTRA = 1         !Track information
+      IFLSIM = 1         !Simulation                                          
+      IFLBSP = 2         !Beam spot                                            
+      IFLBTG = 2         !B-tagging
+      IFLEMC = 1         !Elm. calorimetry
+      IFLHAC = 1         !Had. calorimetry                                     
+      IFLELE = 1         !Electron identification                              
+      IFLPHO = 1         !Photon/pi0 identification
+      IFLMUO = 1         !Muon identification
+      IFLHAD = 1         !Hadron identification
+      IFLVDH = 1         !Vertex detector
+      IFLRV0 = 1         !V0 reconstruction
+      IFLPHO = 1         !photon/pi0 identification
+      IFLPHC = 1         !Converted photon
+      IFLSTR = 0         !Track selection (LVLOCK filling)
+      IFLJET = 1         !jet reconstruction
+*                                                                           
+*--   Change the default acceptance conditions for                          
+*--   detectors/triggers of the "RUNQUALITY" files                          
+*                                                                           
+*--   MVX_A and MVX_C                                                       
+      IRQDMN(1) = 1                                                         
+      IRQDMN(2) = 1                                                         
+*                                                                           
+*--   TPC_0 and TPC_1                                                       
+      IRQDMN(5) = 7                                                         
+      IRQDMN(6) = 7                                                         
+*                                                                           
+*--   Read the runquality files                                             
+      CALL PSRUNQ(0)                                                       
+*                                                                           
+*--   Put your initialization code here...
+*
+      CALL MYINI
+*                                                                           
+      END                                                                  
+*                                                                           
++DECK,USER01. **********************************************************
+      SUBROUTINE USER01(NEED)
+************************************************************************
+*                                                                      *
+*     Name           :  USER01                                         *
+*     Called by      :  PHNEED                                         *
+*     Date of coding :  Jan 18, 1992                                   *
+*     Last update    :  Mar 15, 1994                                   *
+*     Task           :  General event analysis                         *
+*                                                                      *
+*     Output         :  NEED = 1 the event is     needed               *
+*                       NEED = 0 the event is NOT needed               *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
++CDE, PHCDE.
++CDE, PSCEVT.
++CDE, PSCFLG.
+*
+*--   arguments
+      INTEGER NEED
+*
+*--   functions
+      INTEGER IPHPIC,JBIT
+      CHARACTER*4 PHRTY
+*
+*--   local variables
+      INTEGER IDENT,IRSEL
+      CHARACTER*4 RECTYP
+*
+      NEED   = 0
+*
+*--   Check the record type
+      RECTYP = PHRTY()
+*
+      IF     ( RECTYP .EQ. 'SOR ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'COR ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'EOR ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'SOS ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'BOF ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. 'CPT ' ) THEN
+         GO TO 99
+      ELSE IF( RECTYP .EQ. '0072' ) THEN
+         GO TO 99
+      ENDIF
+*
+      IF ( RECTYP .NE. 'DST '  .AND.
+     +     RECTYP .NE. 'MINI' ) THEN
+         WRITE(*,1000) IIIRUN,IIIEVT,NEVENT
+         GO TO 99
+      ENDIF
+*
+*--   Maximum  number of events
+C      IF ( NEVENT .GT. 100 ) THEN
+C        NEED = -3
+C        GO TO 99
+C      ENDIF
+*
+      IF ( RECTYP .EQ. 'DST ' ) THEN
+*
+*--      Pilot record information
+         IDENT = IPHPIC ('IDEN',1)
+         IF ( IDENT .GE. 0 ) THEN
+*--         Hadronic selection
+            IHAD4 = 0
+            IF(JBIT(IPILOT(IDENT+6),1) .EQ. 1  .AND.
+     +         JBIT(IPILOT(IDENT+6),2) .EQ. 1) IHAD4 = 1
+         ENDIF
+*
+*--      Run quality selection
+         IRSEL = 1
+         IF ( IFLRNQ .GT. 0  .AND.
+     +        IIIRUN .GT. 0 ) THEN
+            CALL PSRUNS(IRSEL)
+         ENDIF
+*
+CCC      IF ( IRSEL .EQ. 1  .AND.
+CCC  +        IHAD4 .NE. 0 ) NEED = 1
+         NEED = 1
+*
+C        IF ( IRSEL .EQ. 1 ) NEED = 1
+      ENDIF
+*
+      IF ( RECTYP .EQ. 'MINI' ) THEN
+*
+         NEED = 1
+*
+      ENDIF
+*
+   99 CONTINUE
+*-----------------------------------------------------------------------
+ 1000 FORMAT(/,1X,'%PSMAIN-E-USER01, ','Event not in any DST format'
+     +      ,/,1X,'                  ','Run',I7,', Event',I6,'/',I6,/)
+      END
+*
++DECK,USER02. **********************************************************    
+      SUBROUTINE USER02                                                    
+************************************************************************     
+*                                                                      *     
+*     Name           :  USER02                                         *     
+*     Called by      :  PHPROC                                         *     
+*     Date of coding :  Nov 18, 1993                                   *     
+*     Last update    :  Mar 07, 1995                                   *     
+*     Task           :  To access the event for analysis               *     
+*                                                                      *     
+************************************************************************     
+      IMPLICIT NONE                                                          
+*
++CDE, PHCDE.                                                                 
++CDE, PSCVEC.                                                                
++CDE, PSCTBL.                                                                
++CDE, PSCEVT.
+*
+*--   local varibles
+      REAL TIME
+*                                                                            
+*--   At the beggining of the event                                          
+      CALL PSBEG                                                             
+*                                                                            
+*--   Produce event list(s) (example Team11)                                 
+C     CALL PSEVTL                                                            
+*                                                                            
+*--   Put your analysis code here...                                         
+*
+      CALL MYANA
+*
+* Compute the CPU time
+*
+      CALL TIMED(TIME)
+      IF (MOD(FLOAT(NGOODS),10000.).EQ.0. .AND. NGOODS.NE.0) THEN
+	CALL TIMEX(TIME)
+	WRITE (6,1001)NEVENT,NGOODS,NFZFIL,TIME
+      ENDIF
+*-----------------------------------------------------------------------
+ 1001   FORMAT(/,1X,'%PSMAIN-I-USER02, Program execution statistics',
+     +    /,1X,'Events Processed',I8,', Selected',I8,
+     +    /,1X,'Cassettes processed',I4,', CPU time used',F9.2,/)
+      END                                                                    
+*                                                                            
++DECK, USER99. *********************************************************
+      SUBROUTINE USER99
+************************************************************************
+*                                                                      *
+*     Name           :  USER99                                         *
+*     Called by      :  PHEND                                          *
+*     Date of coding :  Aug 07, 1993                                   *
+*     Last update    :  Mar 25, 1994                                   *
+*     Task           :  To be called at the end of the run             *
+*                                                                      *
+************************************************************************
++CDE, PSCEVL.
+*
+      CLOSE(LUNMU1)
+      CLOSE(LUNEL1)
+      CLOSE(LUNLP2)
+*
+      END
+*
++PATCH,MYANA. ==========================================================
++DECK, MYINI. **********************************************************
+      SUBROUTINE MYINI
+************************************************************************
+*                                                                      *
+*     Name           :  MYINI                                          *
+*     Called by      :  USER00                                         *
+*     Date of coding :  Jan 14, 1995, by A. Lopez-Aguera               *
+*     Last update    :  Nov 07, 1995, by F. Cossutti                   *
+*     Task           :  User analysis initialization                   *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
+      END
+*
++DECK,MYANA. ***********************************************************
+      SUBROUTINE MYANA
+************************************************************************
+*                                                                      *
+*     Name           :  MYINI                                          *
+*     Called by      :  USER02                                         *
+*     Date of coding :  Jan 14, 1995, by A. Lopez-Aguera               *
+*     Last update    :  Nov 09, 1995, by F. Cossutti                   *
+*     Task           :  User analysis steering routine                 *
+*                                                                      *
+************************************************************************
+      IMPLICIT NONE
+*
++CDE, PHCDE.
++CDE, PSCEVT.
++CDE, PSCVEC.
++CDE, PSCVECJJ.
++CDE, PSCLUJ.
+*
+      INTEGER I
+      LOGICAL FIRST
+      DATA FIRST/.TRUE./
+*
+      IF (FIRST) THEN
+          WRITE(*,'(''DST Version = '',I6,'', Type = '',A)') 
+     &               ISVER, CDTYPE
+          FIRST = .FALSE.
+      ENDIF
+*
+      WRITE(*,'(''NRUN = '',I9,'', IEVT = '',I9)') IIIRUN, IIIEVT
+*
+      WRITE(*,'(''NVECP = '',I3)') NVECP
+*
+      DO I=1, NVECP
+          WRITE(*,1000) I,
+     &      VECP(1,I), VECP(2,I), VECP(3,I), VECP(4,I), VECP(5,I),
+     &      VECP(6,I), INT(VECP(7,I)), INT(VECP(8,I)), IVECP(9,I), 
+     &      IVECP(10,I)
+      ENDDO
+ 1000 FORMAT(I3, ': ', 6(F9.3, X), 2(I3,1X), 2(I12,X))
+      END
+
