@@ -4,7 +4,7 @@
 #include <cstring>
 
 extern "C" void phdst_(char *, int *, int *, size_t);
-#define PHDST(A,B,C) phdst_(A,&B,&C,std::strlen(A))
+#define PHDST(A,B,C) {char * a = strdup(A); int b = B; phdst_(a,&b,&C,std::strlen(a)); free(a);}
 
 #define USER00() extern "C" void user00_()
 #define USER01(A) extern "C" void user01_(A)

@@ -2,7 +2,7 @@
 #include <iostream>
 
 #include "PhdstAnalysis.hxx"
-
+#include "phdst.hxx"
 
 PhdstAnalysis *PhdstAnalysis::_instance = nullptr;
 
@@ -18,12 +18,16 @@ PhdstAnalysis *PhdstAnalysis::getInstance()
 PhdstAnalysis::PhdstAnalysis() {};
 PhdstAnalysis::~PhdstAnalysis() {};
 
-int PhdstAnalysis::run(const std::string& option)
+int PhdstAnalysis::run(const std::string &option)
 {
-    char * opt = strdup(option.c_str());
-    int dummy = 0;
-    int flag;
-    PHDST(opt, dummy, flag);
+    // not very elegant
+    // char *opt = strdup(option.c_str());
+    // int dummy = 0;
+    // int flag;
+    // PHDST(opt, dummy, flag);
+    // free(opt);
+    int flag = 0;
+    PHDST(option.c_str(), 0, flag);
     return flag;
 };
 
@@ -67,4 +71,3 @@ USER99()
 {
     PhdstAnalysis::getInstance()->user99();
 };
-

@@ -1,6 +1,17 @@
 #ifndef SKELANA_HXX
 #define SKELANA_HXX
 
+#include <cstring>
+
+extern "C" void phset_(char *, int *, size_t);
+#define PHSET(A,B) {char * a = strdup(A); int b = B; phset_(a,&b,std::strlen(a)); free(a);}
+
+extern "C" void psini_();
+#define PSINI() psini_()
+
+extern "C" void psrunq_(int *);
+#define PSRUNQ(A) {int a = A; psrunq_(&a);}
+
 extern "C" struct {
     int ifltra;
     int iflfix;
@@ -69,16 +80,8 @@ extern "C" struct {
     float vecp[3*10*MTRACK];
 } pucppp_ ;
 
-#define VECP_px(i) pucpp_.vecp[i]
-#define VECP_py(i) pucpp_.vecp[3*MTRACK+i]
-#define VECP_pz(i) pucpp_.vecp[6*MTRACK+i]
-#define VECP_energy(i) pucpp_.vecp[9*MTRACK+i]
-#define VECP_mass(i) pucpp_.vecp[12*MTRACK+i]
-#define VECP_p(i) pucpp_.vecp[15*MTRACK+i]
-#define VECP_charge(i) pucpp_.vecp[18*MTRACK+i]
-#define VECP_masscode(i) pucpp_.vecp[21*MTRACK+i]
-#define IVECP_massid(i) (int)pucpp_.vecp[24*MTRACK+i]
-#define IVECP_jetnr(i) (int)pucpp_.vecp[27*MTRACK+i]
+#define VECP(I,J) pucpp_.vecp[3*10*MTRACK*((I)-1)+(J)-1]
+#define IVECP(I,J) (int)pucpp_.vecp[3*10*MTRACK*((I)-1)+(J)-1]
 
 extern "C" struct {
     int nvecp;
@@ -95,7 +98,44 @@ extern "C" struct {
 #define NNVECP pscvec_.nnvecp
 #define NVECMC pscvec_.nvecmc
 #define NJET pscvec_.njet
-#define LVLOCK(i) pscvec_.lvlock[i]
-#define INVEP(i) pscvec_.invecp[i]
+#define LVLOCK(I) pscvec_.lvlock[(I)-1]
+#define INVEP(I) pscvec_.invecp[(I)-1]
+
+#define MRQFIL 5000
+#define NRQDET 38
+#define NRQTRG 23
+#define MSRUNS 3000
+
+extern "C" struct {
+    int nrqfil;
+    int irqfil[MRQFIL];
+    float erqfil[MRQFIL];
+    int irqdmn[NRQDET];
+    int irqdmx[NRQDET];
+    int irqtmn[NRQTRG];
+    int irqtmx[NRQTRG];
+    int irqdet[NRQDET];
+    int irqtrg[NRQDET];
+    int nsruns;
+    int ifruns[MSRUNS];
+    int ilruns[MSRUNS];
+    int iffile[MSRUNS];
+    int ilfile[MSRUNS];
+} pscrnq_;
+
+#define NRQFIL pscrnq_.nrqfil
+#define IRQFIL(I) pscrnq_.nrqfil[(I)-1]
+#define ERQFIL(I) pscrnq_.erqfil[(I)-1]
+#define IRQDMN(I) pscrnq_.irqdmn[(I)-1]
+#define IRQDMX(I) pscrnq_.irqdmx[(I)-1]
+#define IRQTMN(I) pscrnq_.irqtmn[(I)-1]
+#define IRQTMX(I) pscrnq_.irqtmx[(I)-1]
+#define IRQDET[I] pscrnq_.irqdet[(I)-1]
+#define IRQTRQ[I] pscrnq_.irqtrq[(I)-1]
+#define NSRUNS pscrnq_.nsruns
+#define IFRUNS(I) pscrnq_.ifruns[(I)-1]
+#define ILRUNS(I) pscrnq_.ilruns[(I)-1]
+#define IFFILE(I) pscrnq_.iffile[(I)-1]
+#define ILFILE(I) pscrnq_.ilfile[(I)-1]
 
 #endif
