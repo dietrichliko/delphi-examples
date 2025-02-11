@@ -259,7 +259,7 @@ C     CALL PSEVTL
 +CDE, PSCVECJJ.
 +CDE, PSCLUJ.
 *
-      INTEGER I
+      INTEGER I, J
       LOGICAL FIRST
       DATA FIRST/.TRUE./
 *
@@ -271,14 +271,41 @@ C     CALL PSEVTL
 *
       WRITE(*,'(''NRUN = '',I9,'', IEVT = '',I9)') IIIRUN, IIIEVT
 *
-      WRITE(*,'(''NVECP = '',I3)') NVECP
+      WRITE(*,'(''Reconstructed Particle NVECP = '',I3)') NVECP
 *
-      DO I=1, NVECP
-          WRITE(*,1000) I,
+      WRITE(*,1000)
+      DO I=LVPART, LVPART+NVECP-1
+          WRITE(*,1010) I,
+     &      VECP(1,I), VECP(2,I), VECP(3,I), VECP(4,I), VECP(5,I),
+     &      VECP(6,I), INT(VECP(7,I)), INT(VECP(8,I)), IVECP(9,I), 
+     &      MOD(IVECP(10,I)/1000,10), MOD(IVECP(10,I)/100,10),
+     &      MOD(IVECP(10,I)/10,10), MOD(IVECP(10,I),10)
+      ENDDO
+
+      WRITE(*,'(''Simulated Particles NVECMC = '',I3)') NVECMC
+*
+      WRITE(*, 1100)
+      DO I=LVPART+MTRACK, LVPART+MTRACK+NVECMC-1
+          WRITE(*,1110) I-MTRACK,
      &      VECP(1,I), VECP(2,I), VECP(3,I), VECP(4,I), VECP(5,I),
      &      VECP(6,I), INT(VECP(7,I)), INT(VECP(8,I)), IVECP(9,I), 
      &      IVECP(10,I)
       ENDDO
- 1000 FORMAT(I3, ': ', 6(F9.3, X), 2(I3,1X), 2(I12,X))
+
+      WRITE(*,1210)
+      DO I=1, NP
+         WRITE(*,1210) I, (KP(I,J),J=1,5), (PP(I,J),J=1,5), 
+     &      (VP(I,J),J=1,5)
+      ENDDO
+
+ 1000 FORMAT(' Idx :     p_x     p_y     p_z  energy    mass  ',
+     &       'moment chg pdg       massid : j h c i')
+ 1010 FORMAT(X, I3, ' : ', 6(F7.2, X), 2(I3, X), I12, ' : ', 4(I1,X))
+ 1100 FORMAT(' Idx :     p_x     p_y     p_z  energy    mass  ',
+     &       'moment chg pdg       massid :      xxxx')
+ 1110 FORMAT(X, I3, ' : ', 6(F7.2, X), 2(I3, X), I12, ' : ', I12)
+ 1200 FORMAT(' Idx :    pdg ....')
+ 1210 FORMAT(X, I3,' : ', I6, X, 4(I3, X), ': ', 5(F9.3,X), 
+     & ': ', 5(F9.3,X))
       END
 

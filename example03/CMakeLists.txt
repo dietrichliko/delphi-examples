@@ -4,7 +4,7 @@
 
 cmake_minimum_required(VERSION 3.26)
 
-project(Example03 VERSION 0.1 LANGUAGES Fortran)
+project(DELPH-example03 VERSION 0.1 LANGUAGES Fortran)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/../cmake")
 find_package(Delphi REQUIRED)

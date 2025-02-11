@@ -1,4 +1,4 @@
-#include "PhdstAnalysis.cxx"
+#include "PhdstAnalysis.hxx"
 
 int main()
 {

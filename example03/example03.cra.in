@@ -60,7 +60,7 @@
 %
 %User CDE's
 +USE,P=MYCDE.
-+PAM,11,T=A,C, R=MYCDE,      IF=UNIX.  ${CMAKE_SOURCE_DIR}/example03.car
++PAM,11,T=A,C, R=MYCDE,      IF=UNIX.  ${CMAKE_CURRENT_SOURCE_DIR}/example03.car
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -73,6 +73,6 @@
 %
 +USE,P=MYUSER,T=E.
 +USE,P=MYANA ,T=E.
-+PAM,11,T=A,C,               IF=UNIX.  ${CMAKE_SOURCE_DIR}/example03.car
++PAM,11,T=A,C,               IF=UNIX.  ${CMAKE_CURRENT_SOURCE_DIR}/example03.car
 %
 +QUIT.

@@ -1,10 +1,8 @@
-#include "SkelanaAnalysis.hxx"
-
-#include "PhdstAnalysis.cxx"
-
+#include "Analysis05.hxx"
 
 int main()
 {
-    PhdstAnalysis *analysis = SkelanaAnalysis::getInstance();
+    Analysis05 *analysis = Analysis05::getInstance();
     analysis->run(" ");
+    return EXIT_SUCCESS;
 }

@@ -20,14 +20,8 @@ PhdstAnalysis::~PhdstAnalysis() {};
 
 int PhdstAnalysis::run(const std::string &option)
 {
-    // not very elegant
-    // char *opt = strdup(option.c_str());
-    // int dummy = 0;
-    // int flag;
-    // PHDST(opt, dummy, flag);
-    // free(opt);
     int flag = 0;
-    PHDST(option.c_str(), 0, flag);
+    PHDST(option, 0, flag);
     return flag;
 };
 
@@ -39,6 +33,7 @@ void PhdstAnalysis::user00()
 int PhdstAnalysis::user01()
 {
     std::cout << "PhdstAnalaysis::user01 called" << std::endl;
+    std::cout << "Record type: " << PHRTY() << std::endl;
     return 1;
 };
 
@@ -52,22 +47,22 @@ void PhdstAnalysis::user99()
     std::cout << "PhdstAnalaysis::user99 called" << std::endl;
 };
 
-USER00()
+extern "C" void USER00()
 {
     PhdstAnalysis::getInstance()->user00();
 };
 
-USER01(int &need)
+extern "C" void USER01(int * need)
 {
-    need = PhdstAnalysis::getInstance()->user01();
+    *need = PhdstAnalysis::getInstance()->user01();
 };
 
-USER02()
+extern "C" void USER02()
 {
     PhdstAnalysis::getInstance()->user02();
 };
 
-USER99()
+extern "C" void USER99()
 {
     PhdstAnalysis::getInstance()->user99();
 };
